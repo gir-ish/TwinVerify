@@ -1,0 +1,5 @@
+speechbrain 
+librosa 
+sounddevice
+stable-baselines3
+gym
