@@ -1,3 +1,4 @@
+import streamlit as st
 import sounddevice as sd
 from scipy.io.wavfile import write, read
 from speechbrain.pretrained import SpeakerRecognition
@@ -7,7 +8,6 @@ import numpy as np
 from io import BytesIO
 from collections import defaultdict
 import warnings
-import time
 
 warnings.filterwarnings("ignore")
 
@@ -23,10 +23,10 @@ SIMILARITY_THRESHOLD_VERIFY = 0.65
 
 def record_audio(duration=5, fs=16000):
     """Record audio for a specified duration."""
-    print("Recording... Please speak.")
+    st.write("Recording... Please speak.")
     audio_data = sd.rec(int(duration * fs), samplerate=fs, channels=1, dtype='float32')
     sd.wait()
-    print("Recording completed.")
+    st.write("Recording completed.")
     return audio_data.squeeze()
 
 def compute_embedding(audio_data, fs=16000):
@@ -64,7 +64,6 @@ def load_user_data(user_id):
             torch.load(os.path.join(user_dir, file))
             for file in sorted(os.listdir(user_dir)) if file.endswith('.pt')
         ]
-        # Handle missing verification count file
         verification_count = 0
         verification_count_file = os.path.join(user_dir, 'verification_count.txt')
         if os.path.exists(verification_count_file):
@@ -76,108 +75,93 @@ def load_user_data(user_id):
             'memory_buffer': [],
             'verification_count': verification_count
         }
-        print(f"User {user_id} loaded with {len(embeddings)} embeddings and verification count {verification_count}.")
-    else:
-        print(f"User directory for {user_id} does not exist. Skipping...")
 
-def enroll_user(user_id):
-    """Enroll a user by recording and saving multiple audio segments."""
-    if user_id in user_data:
-        print(f"User {user_id} already exists!")
-        return
-
-    print(f"Starting enrollment for {user_id}.")
-    embeddings = []
-    for i in range(3):  # Reduced to 3 recordings for efficiency
-        audio_data = record_audio()
-        embedding = compute_embedding(audio_data)
-        if embeddings:
-            similarity = compare_embeddings(embeddings[-1], embedding)
-            if similarity < SIMILARITY_THRESHOLD_ENROLL:
-                print(f"Low similarity with previous segment ({similarity:.2f}). Please re-record.")
-                continue
-        embeddings.append(embedding)
-        print(f"Segment {i + 1} recorded.")
-
-    user_data[user_id] = {'embeddings': embeddings, 'memory_buffer': [], 'verification_count': 0}
-    save_user_data(user_id)
-    print(f"User {user_id} enrolled successfully with {len(embeddings)} segments.")
-
-def verify_user(user_id):
-    """Verify a user by comparing their recording with saved embeddings."""
-    if user_id not in user_data:
-        print(f"User {user_id} not found!")
-        return
-
-    print(f"Recording verification audio for {user_id}...")
-    verification_audio = record_audio()
-    verification_embedding = compute_embedding(verification_audio)
-
-    max_similarity, best_match_idx = 0, -1
-    for idx, embedding in enumerate(user_data[user_id]['embeddings']):
-        similarity = compare_embeddings(embedding, verification_embedding)
-        if similarity > max_similarity:
-            max_similarity, best_match_idx = similarity, idx
-
-    if max_similarity > SIMILARITY_THRESHOLD_VERIFY:
-        print(f"Verification successful with similarity {max_similarity:.2f}. Updating embedding...")
-        updated_embedding = update_embedding(user_data[user_id]['embeddings'][best_match_idx], verification_embedding)
-        user_data[user_id]['embeddings'][best_match_idx] = updated_embedding
-        save_user_data(user_id)
-    else:
-        print(f"Verification failed. Maximum similarity: {max_similarity:.2f}.")
-
-def list_users():
-    """List all enrolled users."""
-    users = list(user_data.keys())
-    print("Enrolled Users:" if users else "No users found.")
-    for user in users:
-        print(f"- {user}")
-
-def remove_user(user_id):
-    """Remove a user and their data from disk."""
-    if user_id in user_data:
-        del user_data[user_id]
-        user_dir = f'vault_data/{user_id}'
-        if os.path.exists(user_dir):
-            for file in os.listdir(user_dir):
-                os.remove(os.path.join(user_dir, file))
-            os.rmdir(user_dir)
-        print(f"User {user_id} removed.")
-    else:
-        print(f"User {user_id} not found.")
-
-def main_menu():
-    """Main menu for the application."""
-    while True:
-        print("\n--- Voice Authentication System ---")
-        print("1. Enroll a new user")
-        print("2. Verify a user")
-        print("3. List enrolled users")
-        print("4. Remove a user")
-        print("5. Exit")
-        choice = input("Enter your choice: ")
-
-        if choice == '1':
-            user_id = input("Enter user ID: ")
-            enroll_user(user_id)
-        elif choice == '2':
-            user_id = input("Enter user ID to verify: ")
-            verify_user(user_id)
-        elif choice == '3':
-            list_users()
-        elif choice == '4':
-            user_id = input("Enter user ID to remove: ")
-            remove_user(user_id)
-        elif choice == '5':
-            break
-        else:
-            print("Invalid choice. Please try again.")
-
-# Load existing users on startup
-if __name__ == "__main__":
+def load_all_users():
+    """Load all users on app start."""
     if not os.path.exists('vault_data'):
         os.makedirs('vault_data')
     for user_dir in os.listdir('vault_data'):
         load_user_data(user_dir)
-    main_menu()
+
+# Streamlit UI components
+st.title("Voice Authentication System")
+st.sidebar.header("Navigation")
+menu = st.sidebar.radio("Choose an action", ["Enroll User", "Verify User", "List Users", "Remove User"])
+
+if menu == "Enroll User":
+    st.header("Enroll a New User")
+    user_id = st.text_input("Enter a User ID:")
+    if st.button("Start Enrollment"):
+        if user_id in user_data:
+            st.error(f"User {user_id} already exists!")
+        else:
+            st.info(f"Starting enrollment for {user_id}. Please record 3 segments.")
+            embeddings = []
+            for i in range(3):
+                st.write(f"Recording segment {i + 1}")
+                audio_data = record_audio()
+                embedding = compute_embedding(audio_data)
+                if embeddings:
+                    similarity = compare_embeddings(embeddings[-1], embedding)
+                    if similarity < SIMILARITY_THRESHOLD_ENROLL:
+                        st.warning(f"Segment {i + 1} is not similar to the previous one. Please re-record.")
+                        continue
+                embeddings.append(embedding)
+                st.success(f"Segment {i + 1} recorded.")
+            user_data[user_id] = {'embeddings': embeddings, 'memory_buffer': [], 'verification_count': 0}
+            save_user_data(user_id)
+            st.success(f"User {user_id} enrolled successfully!")
+
+elif menu == "Verify User":
+    st.header("Verify a User")
+    user_id = st.text_input("Enter a User ID:")
+    if st.button("Start Verification"):
+        if user_id not in user_data:
+            st.error(f"User {user_id} not found!")
+        else:
+            st.info(f"Recording audio for verification...")
+            audio_data = record_audio()
+            verification_embedding = compute_embedding(audio_data)
+
+            max_similarity, best_match_idx = 0, -1
+            for idx, embedding in enumerate(user_data[user_id]['embeddings']):
+                similarity = compare_embeddings(embedding, verification_embedding)
+                if similarity > max_similarity:
+                    max_similarity, best_match_idx = similarity, idx
+
+            if max_similarity > SIMILARITY_THRESHOLD_VERIFY:
+                st.success(f"Verification successful! Similarity: {max_similarity:.2f}")
+                updated_embedding = update_embedding(user_data[user_id]['embeddings'][best_match_idx], verification_embedding)
+                user_data[user_id]['embeddings'][best_match_idx] = updated_embedding
+                save_user_data(user_id)
+                st.info("User embedding updated.")
+            else:
+                st.error(f"Verification failed. Maximum similarity: {max_similarity:.2f}")
+
+elif menu == "List Users":
+    st.header("List of Enrolled Users")
+    users = list(user_data.keys())
+    if users:
+        st.write("Enrolled Users:")
+        for user in users:
+            st.write(f"- {user}")
+    else:
+        st.warning("No users found.")
+
+elif menu == "Remove User":
+    st.header("Remove a User")
+    user_id = st.text_input("Enter a User ID to remove:")
+    if st.button("Remove User"):
+        if user_id in user_data:
+            del user_data[user_id]
+            user_dir = f'vault_data/{user_id}'
+            if os.path.exists(user_dir):
+                for file in os.listdir(user_dir):
+                    os.remove(os.path.join(user_dir, file))
+                os.rmdir(user_dir)
+            st.success(f"User {user_id} removed successfully!")
+        else:
+            st.error(f"User {user_id} not found.")
+
+# Load all users when the app starts
+load_all_users()
