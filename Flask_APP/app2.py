@@ -1157,96 +1157,59 @@ def process_decryption():
     
     user_id = session['user_id']
     uploaded_file = request.files.get('file', None)
-
+    
     if not uploaded_file:
-        return render_template('decrypt.html', message="Encrypted file is required.", category="error")
-
-    # Fetch user data
-    user = users_collection.find_one({"user_id": user_id})
-    if not user:
-        return render_template('decrypt.html', message="User not found.", category="error")
-
-    answers = user.get('answers', {})
-    if len(answers) < 3:
-        return render_template(
-            'decrypt.html',
-            message="Insufficient enrollment data for decryption.",
-            category="error"
-        )
-
-    # Extract stored answers for comparison
-    try:
-        stored_answers = [
-            answers[key].get('transcription', '').strip().lower()
-            for key in list(answers.keys())[:3]
-        ]
-    except KeyError:
-        return render_template(
-            'decrypt.html',
-            message="Enrollment data is incomplete or corrupted.",
-            category="error"
-        )
-
-    # Save uploaded encrypted file to a temporary location
+        return render_template('decrypt.html', message="File is required.", category="error")
+    
+    # Save the uploaded file temporarily
     filename = secure_filename(uploaded_file.filename)
     temp_dir = tempfile.gettempdir()
-    encrypted_filepath = os.path.join(temp_dir, filename)
-    uploaded_file.save(encrypted_filepath)
-
-    # Prepare the path to the C++ decryption executable
-    cpp_decrypt_executable = os.path.abspath('./a.out')  # Adjust the executable name/path as needed
-    decrypted_filepath = os.path.join(temp_dir, f"decrypted_{filename}")
-
-    # Run the decryption executable
+    input_filepath = os.path.join(temp_dir, filename)
+    uploaded_file.save(input_filepath)
+    logger.info(f"Uploaded file saved at: {input_filepath}")
+    
+    if not filename.startswith('encrypted_'):
+        logger.error("Invalid file prefix for decryption.")
+        return render_template('decrypt.html', message="Invalid file format. Expected encrypted file.", category="error")
+    
+    cpp_decrypt_executable = '/home/girish/GIT/Audio_vault/Flask_APP/a.out'
+    args = [cpp_decrypt_executable, input_filepath]
+    logger.info(f"Running decryption: {args}")
+    
     try:
-        # Execute the decryption program
-        subprocess.run(
-            [cpp_decrypt_executable, encrypted_filepath],
-            check=True,
-            cwd=os.path.dirname(cpp_decrypt_executable)
-        )
-
-        # Open the decrypted file and extract arguments
-        with open(decrypted_filepath, 'r') as decrypted_file:
-            decrypted_message = decrypted_file.read().strip()
-
-        # Extract arguments (arg1, arg2, arg3)
-        args = decrypted_message.split()[:3]
-        remaining_message = ' '.join(decrypted_message.split()[3:])
-
-        # Compare extracted arguments with stored answers
-        if len(args) != 3 or any(arg.strip().lower() != stored_answers[i] for i, arg in enumerate(args)):
-            return render_template(
-                'decrypt.html',
-                message="Decryption failed: Incorrect security answers.",
-                category="error"
-            )
-
-        # Clean up temporary files
-        os.remove(encrypted_filepath)
-        os.remove(decrypted_filepath)
-
-        # Provide the remaining decrypted message for download
+        result = subprocess.run(args, check=True, capture_output=True, text=True)
+        logger.info(f"Decryption Output: {result.stdout}")
+        
+        decrypted_path = None
+        for line in result.stdout.splitlines():
+            if "Decrypted file saved to:" in line:
+                decrypted_path = line.split(": ")[-1].strip()
+        
+        if not decrypted_path or not os.path.exists(decrypted_path):
+            logger.error(f"Decrypted file not found: {decrypted_path}")
+            return render_template('decrypt.html', message="Decryption failed. Decrypted file not found.", category="error")
+        
+        logger.info(f"Decrypted file available at: {decrypted_path}")
+        
+        with open(decrypted_path, 'rb') as f:
+            decrypted_data = f.read()
+        
+        os.remove(input_filepath)
+        os.remove(decrypted_path)
+        logger.info("Temporary files removed.")
+        
         return send_file(
-            io.BytesIO(remaining_message.encode('utf-8')),
+            io.BytesIO(decrypted_data),
             as_attachment=True,
-            download_name=f"decrypted_{filename}"
+            download_name=os.path.basename(decrypted_path),
+            mimetype='text/plain'
         )
-
     except subprocess.CalledProcessError as e:
-        logger.error(f"Decryption subprocess error: {e}")
-        return render_template(
-            'decrypt.html',
-            message="An error occurred during decryption.",
-            category="error"
-        )
+        logger.error(f"Decryption error: {e.stderr}")
+        return render_template('decrypt.html', message="Decryption failed. Error occurred.", category="error")
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
-        return render_template(
-            'decrypt.html',
-            message="An unexpected error occurred.",
-            category="error"
-        )
+        return render_template('decrypt.html', message="An unexpected error occurred.", category="error")
 
 # ###############################################################################################################################
 # ###############################################################################################################################

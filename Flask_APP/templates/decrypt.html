@@ -26,7 +26,7 @@
             margin-top: 15px;
             font-weight: bold;
         }
-        input[type="file"], input[type="text"] {
+        input[type="file"] {
             width: 100%;
             padding: 10px;
             margin-top: 5px;
@@ -76,16 +76,6 @@
         <form action="/process_decryption" method="post" enctype="multipart/form-data">
             <label for="file">Select Encrypted File:</label>
             <input type="file" id="file" name="file" required>
-            
-            <label for="ans1">Answer to Question 1:</label>
-            <input type="text" id="ans1" name="ans1" required>
-            
-            <label for="ans2">Answer to Question 2:</label>
-            <input type="text" id="ans2" name="ans2" required>
-            
-            <label for="ans3">Answer to Question 3:</label>
-            <input type="text" id="ans3" name="ans3" required>
-            
             <button type="submit">🔓 Decrypt File</button>
         </form>
         
