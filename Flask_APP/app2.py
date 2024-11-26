@@ -499,6 +499,34 @@ def login():
 # ###############################################################################################################################
 
 
+# @app.route('/authenticate', methods=['POST'])
+# def authenticate():
+#     user_id = request.form['user_id'].strip()
+
+#     if not user_id:
+#         return render_template('login.html', message="Username cannot be empty.", category="error")
+
+#     # Check if user exists
+#     user = users_collection.find_one({"user_id": user_id})
+#     if not user:
+#         return render_template('login.html', message="Username not found. Please enroll first.", category="error")
+
+#     # Check if user has any questions
+#     if not user.get('answers'):
+#         return render_template('login.html', message="No enrolled questions found. Please enroll first.", category="error")
+
+#     # Select one random question from the enrolled questions
+#     enrolled_questions = list(user['answers'].keys())  # Should be ['q1', 'q2', 'q3']
+#     selected_question = random.choice(enrolled_questions)
+
+#     # Store the selected question in session
+#     session['user_id'] = user_id
+#     session['selected_question'] = selected_question
+
+#     # Pass the question text to the template
+#     return render_template('verify.html', question=user['answers'][selected_question]['question_text'])
+
+
 @app.route('/authenticate', methods=['POST'])
 def authenticate():
     user_id = request.form['user_id'].strip()
@@ -506,25 +534,33 @@ def authenticate():
     if not user_id:
         return render_template('login.html', message="Username cannot be empty.", category="error")
 
-    # Check if user exists
+    # Check if user exists in the database
     user = users_collection.find_one({"user_id": user_id})
     if not user:
         return render_template('login.html', message="Username not found. Please enroll first.", category="error")
 
-    # Check if user has any questions
-    if not user.get('answers'):
+    # Check if the user has enrolled questions and answers
+    if not user.get('answers') or len(user.get('answers')) < 3:
+        return render_template('login.html', message="Insufficient enrolled questions. Please enroll first.", category="error")
+
+    # Get all enrolled questions
+    enrolled_questions = list(user['answers'].keys())  # Typically, ['q1', 'q2', 'q3']
+    if not enrolled_questions:
         return render_template('login.html', message="No enrolled questions found. Please enroll first.", category="error")
 
-    # Select one random question from the enrolled questions
-    enrolled_questions = list(user['answers'].keys())  # Should be ['q1', 'q2', 'q3']
+    # Randomly select one question
     selected_question = random.choice(enrolled_questions)
 
-    # Store the selected question in session
+    # Store the selected question and user_id in the session
     session['user_id'] = user_id
     session['selected_question'] = selected_question
 
-    # Pass the question text to the template
-    return render_template('verify.html', question=user['answers'][selected_question]['question_text'])
+    # Retrieve the question text from the user's answers
+    question_text = user['answers'][selected_question].get('question_text', "Unknown question")
+
+    # Render the verify page with the selected question
+    return render_template('verify.html', question=question_text)
+
 # ###############################################################################################################################
 # ###############################################################################################################################
 
@@ -929,13 +965,33 @@ def cancel_enrollment():
     return jsonify({"status": "success", "message": "Enrollment canceled and data deleted."})
 
 # ###############################################################################################################################
-# ###############################################################################################################################
-
+# ###############################################################################################################################``
 @app.route('/encrypt')
 def encrypt():
+    # Check if the user is logged in
     if 'user_id' not in session:
+        logger.info("No user_id in session. Redirecting to login.")
         return redirect(url_for('login'))
-    return render_template('encrypt.html')
+
+    # Fetch user details using `user_id` from the session
+    user_id = session['user_id']
+    user = users_collection.find_one({"user_id": user_id})
+
+    # Check if the user exists and has completed enrollment
+    if not user or not user.get('answers') or len(user['answers']) < 3:
+        logger.info(f"User {user_id} not properly enrolled. Redirecting to secure dashboard.")
+        return render_template(
+            'secure_dashboard.html',
+            message="Please complete enrollment first.",
+            category="error",
+            user_id=user_id
+        )
+
+    # Log the user's ID and proceed to encryption page
+    logger.info(f"Rendering encrypt.html for user_id: {user_id}")
+
+    # Render the encrypt page without any unrelated variables
+    return render_template('encrypt.html', user_id=user_id)
 
 # ###############################################################################################################################
 # ###############################################################################################################################
@@ -944,92 +1000,146 @@ def encrypt():
 def process_encryption():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    
+
+    # Fetch `user_id` from session
     user_id = session['user_id']
-    ans1 = request.form.get('ans1', '').strip()
-    ans2 = request.form.get('ans2', '').strip()
-    ans3 = request.form.get('ans3', '').strip()
     uploaded_file = request.files.get('file', None)
-    
-    if not all([ans1, ans2, ans3, uploaded_file]):
-        return render_template('encrypt.html', message="All fields are required.", category="error")
-    
-    # Retrieve user data
+
+    if not uploaded_file:
+        return render_template(
+            'encrypt.html',
+            message="File is required.",
+            category="error",
+            user_id=user_id
+        )
+
+    # Fetch user data from MongoDB using `user_id`
     user = users_collection.find_one({"user_id": user_id})
     if not user:
-        return render_template('encrypt.html', message="User not found.", category="error")
-    
-    stored_answers = user.get('answers', {})
-    # Assuming answers are stored under 'q1', 'q2', 'q3'
-    stored_ans1 = stored_answers.get('q1', {}).get('answer', '').strip().lower()
-    stored_ans2 = stored_answers.get('q2', {}).get('answer', '').strip().lower()
-    stored_ans3 = stored_answers.get('q3', {}).get('answer', '').strip().lower()
-    
-    # Verify answers
-    if (ans1.lower() != stored_ans1) or (ans2.lower() != stored_ans2) or (ans3.lower() != stored_ans3):
-        return render_template('encrypt.html', message="Incorrect answers to security questions.", category="error")
-    
-    # Save uploaded file to a temporary location
-    filename = secure_filename(uploaded_file.filename)
-    temp_dir = tempfile.gettempdir()
-    input_filepath = os.path.join(temp_dir, filename)
-    uploaded_file.save(input_filepath)
-    
-    # Determine file type and select appropriate encryption binary
-    file_ext = os.path.splitext(filename)[1].lower()
-    if file_ext == '.txt':
-        cpp_encrypt_executable = './C++./a.out'  # Ensure the path is correct
-        args = [cpp_encrypt_executable, input_filepath, ans1, ans2, ans3]
-    elif file_ext == '.wav':
-        cpp_encrypt_executable = './encrypt_audio'
-        args = [cpp_encrypt_executable, input_filepath, ans1, ans2, ans3]
-    elif file_ext in ['.png', '.jpg', '.jpeg']:
-        cpp_encrypt_executable = './encrypt_image'
-        args = [cpp_encrypt_executable, input_filepath, ans1, ans2, ans3]
-    else:
-        return render_template('encrypt.html', message="Unsupported file type.", category="error")
-    
+        return render_template(
+            'encrypt.html',
+            message="User not found. Please enroll first.",
+            category="error",
+            user_id=user_id
+        )
+
+    answers = user.get('answers', {})
+    if len(answers) < 3:
+        return render_template(
+            'encrypt.html',
+            message="Insufficient transcriptions for encryption. Please ensure at least 3 questions are enrolled.",
+            category="error",
+            user_id=user_id
+        )
+
+    # Extract transcriptions for the first 3 enrolled questions
     try:
-        start_time = time.time()
-        subprocess.run(args, check=True)
-        end_time = time.time()
-        
-        # Determine output filename based on encryption binary
-        if file_ext == '.txt':
-            output_filename = 'encrypted_' + filename
-        elif file_ext == '.wav':
-            output_filename = 'encrypted_audio_' + filename
-        elif file_ext in ['.png', '.jpg', '.jpeg']:
-            output_filename = 'encrypted_image_' + filename
-        else:
-            output_filename = 'encrypted_' + filename  # Fallback
-        
-        output_filepath = os.path.join(temp_dir, output_filename)
-        
-        if not os.path.exists(output_filepath):
-            return render_template('encrypt.html', message="Encryption failed. Output file not found.", category="error")
-        
-        # Read encrypted file
-        with open(output_filepath, 'rb') as f:
+        selected_transcriptions = [
+            answers[key].get('transcription', 'unknown') for key in list(answers.keys())[:3]
+        ]
+        logger.info(f"Transcriptions for encryption: {selected_transcriptions}")
+        if any(transcription == 'unknown' for transcription in selected_transcriptions):
+            raise ValueError("Missing transcriptions in some answers.")
+    except ValueError as e:
+        logger.error(f"ValueError: {e}")
+        return render_template(
+            'encrypt.html',
+            message="Some transcriptions are missing. Please complete enrollment.",
+            category="error",
+            user_id=user_id
+        )
+
+    # Path to the C++ executable
+    cpp_encrypt_executable = os.path.abspath('./C++/a.out')  # Absolute path to the executable
+    cpp_dir = os.path.dirname(cpp_encrypt_executable)  # Directory of the executable
+
+    # Move the file to the executable's directory
+    filename = secure_filename(uploaded_file.filename)
+    input_filepath = os.path.join(cpp_dir, filename)  # Copy file to the executable's directory
+    uploaded_file.save(input_filepath)
+
+    # Prepare arguments for the encryption command
+    args = [cpp_encrypt_executable, filename] + selected_transcriptions
+
+    try:
+        logger.info(f"Executing encryption with args: {args}")
+        subprocess.run(args, check=True, cwd=cpp_dir)  # Set working directory to the executable's directory
+        encrypted_filename = f"encrypted_{filename}"
+        encrypted_filepath = os.path.join(cpp_dir, encrypted_filename)
+
+        if not os.path.exists(encrypted_filepath):
+            logger.error(f"Encrypted file not found: {encrypted_filepath}")
+            return render_template(
+                'encrypt.html',
+                message="Encryption failed. Encrypted file not found.",
+                category="error",
+                user_id=user_id
+            )
+
+        # Read the encrypted file
+        with open(encrypted_filepath, 'rb') as f:
             encrypted_data = f.read()
-        
-        # Clean up temporary files
+
+        # Clean up
         os.remove(input_filepath)
-        os.remove(output_filepath)
-        
-        # Provide encrypted file for download
+        os.remove(encrypted_filepath)
+
+        # Provide the encrypted file for download
         return send_file(
             io.BytesIO(encrypted_data),
             as_attachment=True,
-            download_name=output_filename
+            download_name=encrypted_filename
         )
-        
     except subprocess.CalledProcessError as e:
-        print(f"Encryption Error: {e}")
-        return render_template('encrypt.html', message="An error occurred during encryption.", category="error")
+        logger.error(f"Encryption subprocess error: {e}")
+        return render_template(
+            'encrypt.html',
+            message="An error occurred during encryption.",
+            category="error",
+            user_id=user_id
+        )
     except Exception as e:
-        print(f"Unexpected Error: {e}")
-        return render_template('encrypt.html', message="An unexpected error occurred.", category="error")
+        logger.error(f"Unexpected error: {e}")
+        return render_template(
+            'encrypt.html',
+            message="An unexpected error occurred.",
+            category="error",
+            user_id=user_id
+        )
+# ###############################################################################################################################
+# ###############################################################################################################################
+
+def authenticate():
+    user_id = request.form['user_id'].strip()
+
+    if not user_id:
+        return render_template('login.html', message="Username cannot be empty.", category="error")
+
+    # Check if user exists in the database
+    user = users_collection.find_one({"username": user_id})  # Use consistent key: `username`
+    if not user:
+        return render_template('login.html', message="Username not found. Please enroll first.", category="error")
+
+    # Check if the user has enrolled questions and answers
+    if not user.get('transcriptions') or len(user.get('transcriptions')) < 3:
+        return render_template('login.html', message="Insufficient enrolled transcriptions. Please enroll first.", category="error")
+
+    # Get all enrolled questions
+    enrolled_questions = user.get('questions', [])
+    if not enrolled_questions:
+        return render_template('login.html', message="No enrolled questions found. Please enroll first.", category="error")
+
+    # Randomly select one question
+    selected_question = random.choice(enrolled_questions)
+
+    # Store the selected question and user_id in the session
+    session['user_id'] = user_id
+    session['selected_question'] = selected_question
+
+    # Render the verify page with the selected question
+    return render_template('verify.html', question=selected_question)
+
+
 # ###############################################################################################################################
 # ###############################################################################################################################
 
@@ -1040,97 +1150,104 @@ def decrypt():
     return render_template('decrypt.html')
 # ###############################################################################################################################
 # ###############################################################################################################################
-
 @app.route('/process_decryption', methods=['POST'])
 def process_decryption():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
     user_id = session['user_id']
-    ans1 = request.form.get('ans1', '').strip()
-    ans2 = request.form.get('ans2', '').strip()
-    ans3 = request.form.get('ans3', '').strip()
     uploaded_file = request.files.get('file', None)
-    
-    if not all([ans1, ans2, ans3, uploaded_file]):
-        return render_template('decrypt.html', message="All fields are required.", category="error")
-    
-    # Retrieve user data
+
+    if not uploaded_file:
+        return render_template('decrypt.html', message="Encrypted file is required.", category="error")
+
+    # Fetch user data
     user = users_collection.find_one({"user_id": user_id})
     if not user:
         return render_template('decrypt.html', message="User not found.", category="error")
-    
-    stored_answers = user.get('answers', {})
-    # Assuming answers are stored under 'q1', 'q2', 'q3'
-    stored_ans1 = stored_answers.get('q1', {}).get('answer', '').strip().lower()
-    stored_ans2 = stored_answers.get('q2', {}).get('answer', '').strip().lower()
-    stored_ans3 = stored_answers.get('q3', {}).get('answer', '').strip().lower()
-    
-    # Verify answers
-    if (ans1.lower() != stored_ans1) or (ans2.lower() != stored_ans2) or (ans3.lower() != stored_ans3):
-        return render_template('decrypt.html', message="Incorrect answers to security questions.", category="error")
-    
-    # Save uploaded file to a temporary location
+
+    answers = user.get('answers', {})
+    if len(answers) < 3:
+        return render_template(
+            'decrypt.html',
+            message="Insufficient enrollment data for decryption.",
+            category="error"
+        )
+
+    # Extract stored answers for comparison
+    try:
+        stored_answers = [
+            answers[key].get('transcription', '').strip().lower()
+            for key in list(answers.keys())[:3]
+        ]
+    except KeyError:
+        return render_template(
+            'decrypt.html',
+            message="Enrollment data is incomplete or corrupted.",
+            category="error"
+        )
+
+    # Save uploaded encrypted file to a temporary location
     filename = secure_filename(uploaded_file.filename)
     temp_dir = tempfile.gettempdir()
-    input_filepath = os.path.join(temp_dir, filename)
-    uploaded_file.save(input_filepath)
-    
-    # Determine file type and select appropriate decryption binary
-    file_ext = os.path.splitext(filename)[1].lower()
-    if file_ext == '.txt' and filename.startswith('encrypted_'):
-        cpp_decrypt_executable = './dec_txt'
-        args = [cpp_decrypt_executable, input_filepath, ans1, ans2, ans3]
-    elif file_ext == '.wav' and filename.startswith('encrypted_audio_'):
-        cpp_decrypt_executable = './decrypt_audio'
-        args = [cpp_decrypt_executable, input_filepath, ans1, ans2, ans3]
-    elif file_ext in ['.png', '.jpg', '.jpeg'] and filename.startswith('encrypted_image_'):
-        cpp_decrypt_executable = './decrypt_image'
-        args = [cpp_decrypt_executable, input_filepath, ans1, ans2, ans3]
-    else:
-        return render_template('decrypt.html', message="Unsupported or improperly named file type.", category="error")
-    
+    encrypted_filepath = os.path.join(temp_dir, filename)
+    uploaded_file.save(encrypted_filepath)
+
+    # Prepare the path to the C++ decryption executable
+    cpp_decrypt_executable = os.path.abspath('./a.out')  # Adjust the executable name/path as needed
+    decrypted_filepath = os.path.join(temp_dir, f"decrypted_{filename}")
+
+    # Run the decryption executable
     try:
-        start_time = time.time()
-        subprocess.run(args, check=True)
-        end_time = time.time()
-        
-        # Determine output filename based on decryption binary
-        if file_ext == '.txt' and filename.startswith('encrypted_'):
-            output_filename = 'decrypted_' + filename[len('encrypted_'):]
-        elif file_ext == '.wav' and filename.startswith('encrypted_audio_'):
-            output_filename = 'decrypted_audio_' + filename[len('encrypted_audio_'):]
-        elif file_ext in ['.png', '.jpg', '.jpeg'] and filename.startswith('encrypted_image_'):
-            output_filename = 'decrypted_image_' + filename[len('encrypted_image_'):]
-        else:
-            output_filename = 'decrypted_' + filename  # Fallback
-        
-        output_filepath = os.path.join(temp_dir, output_filename)
-        
-        if not os.path.exists(output_filepath):
-            return render_template('decrypt.html', message="Decryption failed. Output file not found.", category="error")
-        
-        # Read decrypted file
-        with open(output_filepath, 'rb') as f:
-            decrypted_data = f.read()
-        
-        # Clean up temporary files
-        os.remove(input_filepath)
-        os.remove(output_filepath)
-        
-        # Provide decrypted file for download
-        return send_file(
-            io.BytesIO(decrypted_data),
-            as_attachment=True,
-            download_name=output_filename
+        # Execute the decryption program
+        subprocess.run(
+            [cpp_decrypt_executable, encrypted_filepath],
+            check=True,
+            cwd=os.path.dirname(cpp_decrypt_executable)
         )
-        
+
+        # Open the decrypted file and extract arguments
+        with open(decrypted_filepath, 'r') as decrypted_file:
+            decrypted_message = decrypted_file.read().strip()
+
+        # Extract arguments (arg1, arg2, arg3)
+        args = decrypted_message.split()[:3]
+        remaining_message = ' '.join(decrypted_message.split()[3:])
+
+        # Compare extracted arguments with stored answers
+        if len(args) != 3 or any(arg.strip().lower() != stored_answers[i] for i, arg in enumerate(args)):
+            return render_template(
+                'decrypt.html',
+                message="Decryption failed: Incorrect security answers.",
+                category="error"
+            )
+
+        # Clean up temporary files
+        os.remove(encrypted_filepath)
+        os.remove(decrypted_filepath)
+
+        # Provide the remaining decrypted message for download
+        return send_file(
+            io.BytesIO(remaining_message.encode('utf-8')),
+            as_attachment=True,
+            download_name=f"decrypted_{filename}"
+        )
+
     except subprocess.CalledProcessError as e:
-        logger.error(f"Decryption Error: {e}")
-        return render_template('decrypt.html', message="An error occurred during decryption.", category="error")
+        logger.error(f"Decryption subprocess error: {e}")
+        return render_template(
+            'decrypt.html',
+            message="An error occurred during decryption.",
+            category="error"
+        )
     except Exception as e:
-        logger.error(f"Unexpected Error: {e}")
-        return render_template('decrypt.html', message="An unexpected error occurred.", category="error")
+        logger.error(f"Unexpected error: {e}")
+        return render_template(
+            'decrypt.html',
+            message="An unexpected error occurred.",
+            category="error"
+        )
+
 # ###############################################################################################################################
 # ###############################################################################################################################
 # ###############################################################################################################################

@@ -175,6 +175,32 @@ def fetch_user_questions_and_details(collection, user_id):
     except Exception as e:
         print(f"An error occurred while fetching questions and details for user '{user_id}': {e}\n")
 
+def show_database_structure(database):
+    """
+    Displays the structure of the database, including collections and their sample documents.
+
+    :param database: MongoDB database object.
+    """
+    try:
+        print("\nDatabase Structure:\n")
+        collections = database.list_collection_names()
+        if not collections:
+            print("No collections found in the database.\n")
+            return
+
+        for idx, collection_name in enumerate(collections, start=1):
+            print(f"{idx}. Collection: {collection_name}")
+            collection = database[collection_name]
+            # Fetch a sample document from the collection
+            sample_document = collection.find_one({}, {"_id": 0})
+            if sample_document:
+                print(f"   Sample Document: {json.dumps(sample_document, indent=4)}")
+            else:
+                print("   No documents found in this collection.")
+            print("")  # Add a newline for better readability
+    except Exception as e:
+        print(f"An error occurred while fetching the database structure: {e}\n")
+
 def main():
     # MongoDB connection URI
     mongo_uri = "mongodb://localhost:27017/"  # Update if necessary
@@ -201,10 +227,11 @@ def main():
         print("2. Delete **ALL** users")
         print("3. View user structure by index")
         print("4. View questions and answers by index")
-        print("5. Refresh user list")
-        print("6. Exit")
+        print("5. Show database structure")
+        print("6. Refresh user list")
+        print("7. Exit")
 
-        choice = input("Enter your choice (1/2/3/4/5/6): ").strip()
+        choice = input("Enter your choice (1/2/3/4/5/6/7): ").strip()
 
         if choice == '1':
             try:
@@ -245,15 +272,16 @@ def main():
                     print(f"Invalid index: {index}. Please enter a number between 1 and {len(users)}.\n")
             except ValueError:
                 print("Invalid input. Please enter a valid number.\n")
-
         elif choice == '5':
+            show_database_structure(db)
+        elif choice == '6':
             print("\nRefreshing user list...\n")
             continue  # Loop again to refresh
-        elif choice == '6':
+        elif choice == '7':
             print("\nExiting the script.")
             break
         else:
-            print("Invalid choice. Please enter 1, 2, 3, 4, 5, or 6.\n")
+            print("Invalid choice. Please enter 1, 2, 3, 4, 5, 6, or 7.\n")
 
     # Close the connection
     client.close()
