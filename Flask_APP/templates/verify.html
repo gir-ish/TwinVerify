@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Your Voice</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .question-block {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .question-block h3 {
+            margin-top: 0;
+        }
+        button {
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        .transcription {
+            margin-top: 10px;
+            color: green;
+        }
+        .error {
+            margin-top: 10px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Voice Verification</h1>
+    <div class="question-block">
+        <h3>Question:</h3>
+        <p id="question">{{ question }}</p>
+        <button onclick="startRecording()" id="startBtn">Start Recording</button>
+        <button onclick="stopRecording()" id="stopBtn" disabled>Stop Recording</button>
+        <p id="transcript" class="transcription"></p>
+        <p id="error" class="error"></p>
+    </div>
+    <div>
+        <button id="submitBtn" disabled onclick="submitRecording()">Submit</button>
+    </div>
+    
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+    
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+                    console.log("Recording started...");
+    
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+    
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        audioChunks = [];
+                        processRecording(audioBlob);
+                    };
+    
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                })
+                .catch(error => {
+                    console.error("Error accessing microphone:", error);
+                    alert("Could not access microphone. Please check your permissions.");
+                });
+        }
+    
+        function stopRecording() {
+            mediaRecorder.stop();
+            console.log("Recording stopped.");
+            document.getElementById('stopBtn').disabled = true;
+        }
+    
+        function processRecording(audioBlob) {
+            const formData = new FormData();
+            formData.append('audio', audioBlob);
+    
+            // Show processing message
+            document.getElementById('transcript').innerText = "Processing transcription...";
+            document.getElementById('error').innerText = "";
+    
+            fetch('/verify_answer', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('transcript').innerText = "Transcription: " + data.transcription;
+                    if (data.result === "open") {
+                        alert("Authentication Successful: Access Granted");
+                        // Redirect to secure dashboard
+                        window.location.href = "{{ url_for('secure_dashboard') }}";
+                    }
+                } else {
+                    document.getElementById('transcript').innerText = "";
+                    document.getElementById('error').innerText = "Error: " + data.message;
+                    alert("Error: " + data.message);
+                }
+            })
+            .catch(error => {
+                console.error("Error verifying answer:", error);
+                document.getElementById('transcript').innerText = "";
+                document.getElementById('error').innerText = "Error verifying answer.";
+                alert("Error verifying answer. Please try again.");
+            });
+        }
+    
+        function submitRecording() {
+            // In this implementation, submission is handled immediately after recording stops.
+            // This function can be used to confirm submission or perform additional actions if needed.
+            alert("Your answer has been submitted for verification.");
+        }
+    </script>
+    </body>
+</html>

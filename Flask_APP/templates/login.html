@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Voice Authentication System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+        }
+        .message {
+            color: red;
+        }
+        .nav-links {
+            margin-top: 20px;
+        }
+        .nav-links a {
+            margin-right: 15px;
+            text-decoration: none;
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <h1>Login to Voice Authentication System</h1>
+    <form action="/authenticate" method="post">
+        <label for="user_id">Enter your Username:</label><br><br>
+        <input type="text" id="user_id" name="user_id" required><br><br>
+        <button type="submit">Login</button>
+    </form>
+    {% if message %}
+        <p class="message">{{ message }}</p>
+    {% endif %}
+    
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/enroll">Enroll</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!-- templates/secure_dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            text-align: center;
+            padding-top: 100px;
+        }
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 20px 40px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 20px;
+            margin: 20px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to Your Secure Dashboard, {{ user_id }}!</h1>
+    <div>
+        <a href="{{ url_for('encrypt') }}"><button class="button">🔐 Encrypt Files</button></a>
+        <a href="{{ url_for('decrypt') }}"><button class="button">🔓 Decrypt Files</button></a>
+    </div>
+    <div>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+</body>
+</html>

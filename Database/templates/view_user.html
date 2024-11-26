@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View User</title>
+</head>
+<body>
+    <h1>User Details</h1>
+    <p>User ID: {{ user['userid'] }}</p>
+    <p>Question 1: {{ user['question_1'] }} - Answer: {{ user['answer_1'] }}</p>
+    <p>Question 2: {{ user['question_2'] }} - Answer: {{ user['answer_2'] }}</p>
+    <p>Question 3: {{ user['question_3'] }} - Answer: {{ user['answer_3'] }}</p>
+    <a href="{{ url_for('update_user', user_id=user['_id']) }}">Update User</a>
+    <br>
+    <a href="{{ url_for('index') }}">Back to Users List</a>
+</body>
+</html>

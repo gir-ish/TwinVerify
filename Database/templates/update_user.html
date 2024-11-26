@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update User</title>
+</head>
+<body>
+    <h1>Update User</h1>
+    <form action="{{ url_for('update_user', user_id=user['_id']) }}" method="post">
+        <label for="userid">User ID:</label>
+        <input type="text" name="userid" value="{{ user['userid'] }}" required><br>
+
+        <label for="question_1">Question 1:</label>
+        <input type="text" name="question_1" value="{{ user['question_1'] }}" required><br>
+
+        <label for="answer_1">Answer 1:</label>
+        <input type="text" name="answer_1" value="{{ user['answer_1'] }}" required><br>
+
+        <label for="question_2">Question 2:</label>
+        <input type="text" name="question_2" value="{{ user['question_2'] }}" required><br>
+
+        <label for="answer_2">Answer 2:</label>
+        <input type="text" name="answer_2" value="{{ user['answer_2'] }}" required><br>
+
+        <label for="question_3">Question 3:</label>
+        <input type="text" name="question_3" value="{{ user['question_3'] }}" required><br>
+
+        <label for="answer_3">Answer 3:</label>
+        <input type="text" name="answer_3" value="{{ user['answer_3'] }}" required><br>
+
+        <button type="submit">Update</button>
+    </form>
+    <br>
+    <a href="{{ url_for('index') }}">Back to Users List</a>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Enrollment Complete</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .answer-block {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .answer-block h3 {
+            margin-top: 0;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enrollment Complete</h1>
+    <p><strong>Username:</strong> {{ user['user_id'] }}</p>
+    <h2>Your Answers:</h2>
+    {% for question, data in user['answers'].items() %}
+        <div class="answer-block">
+            <h3>{{ loop.index }}. {{ data['question_text'] }}</h3>
+            <p><strong>Transcription:</strong> {{ data['transcription'] }}</p>
+            <p><strong>Embeddings:</strong></p>
+            {% for embedding in data['embeddings'] %}
+                <pre>{{ embedding['embedding'] }}</pre>
+            {% endfor %}
+        </div>
+    {% endfor %}
+    <a href="/">Go Back to Home</a>
+</body>
+</html>
