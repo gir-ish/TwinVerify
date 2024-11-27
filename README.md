@@ -51,7 +51,7 @@
 
 ## 🗂️ Project Structure
 
-```plaintext
+<!-- ```plaintext
 Audio_vault_ENC_DEC/
 │
 ├── APP/                      # Application resources
@@ -76,8 +76,29 @@ Audio_vault_ENC_DEC/
 ├── test.py                   # Testing script
 ├── AUDIO_VAULT.drawio.png    # Architecture/workflow diagram
 └── README.md                 # Project documentation (this file)
+``` -->
+```plaintext
+/home/girish/GIT/Audio_vault/Flask_APP
+├── requirements.txt
+├── app.py
+├── app2.py               
+├── C++/
+│   ├── dec
+│   ├── enc
+│   ├── dec_txt.c++
+│   ├── enc_txt.c++
+├── templates/
+│   ├── index.html
+│   ├── login.html
+│   ├── enroll.html
+│   ├── decrypt.html
+│   ├── verify.html
+│   ├── complete.html
+│   ├── encrypt.html
+│   ├── secure_dashboard.html
+├── static/
+│   ├── scripts.js
 ```
-
 ---
 
 ## ⚙️ Installation
@@ -86,7 +107,7 @@ Audio_vault_ENC_DEC/
 - Python 3.8+
 - Flask
 - Audio processing libraries (e.g., PyTorch, Librosa)
-- Database system (e.g., SQLite, MySQL)
+- Database system (MongoDb)
 - `pip` for dependency installation
 
 ### 🛠️ Setup
