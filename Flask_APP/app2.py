@@ -1050,7 +1050,7 @@ def process_encryption():
         )
 
     # Path to the C++ executable
-    cpp_encrypt_executable = os.path.abspath('./C++/a.out')  # Absolute path to the executable
+    cpp_encrypt_executable = os.path.abspath('./C++/enc')  # Absolute path to the executable
     cpp_dir = os.path.dirname(cpp_encrypt_executable)  # Directory of the executable
 
     # Move the file to the executable's directory
@@ -1172,7 +1172,7 @@ def process_decryption():
         logger.error("Invalid file prefix for decryption.")
         return render_template('decrypt.html', message="Invalid file format. Expected encrypted file.", category="error")
     
-    cpp_decrypt_executable = '/home/girish/GIT/Audio_vault/Flask_APP/a.out'
+    cpp_decrypt_executable = '/home/girish/GIT/Audio_vault/Flask_APP/C++/dec'
     args = [cpp_decrypt_executable, input_filepath]
     logger.info(f"Running decryption: {args}")
     
