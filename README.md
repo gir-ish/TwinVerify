@@ -4,7 +4,7 @@
 ## 🌟 Overview
 **Audio Vault ENC/DEC** is a secure, two-step authentication system that combines **speaker verification** and **audio-based encryption/decryption** to ensure robust user authentication and data security. This project uniquely integrates voice authentication with secure data handling for both **user enrollment** and **data access**.
 ---
-![Example Screenshot](audio-vault-enc-dec-application.drawio "Project Working")
+![Example Screenshot](audio-vault-enc-dec-application.drawio.png "Project Working")
 ---
 
 ## 🚀 Features
