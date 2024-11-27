@@ -175,9 +175,6 @@ Audio_vault_ENC_DEC/
 
 <!-- --- -->
 
-## 📜 License
-This project is licensed under the **MIT License**.
-
 ---
 
 Feel free to reach out or contribute to this secure system! 🎤🔒
