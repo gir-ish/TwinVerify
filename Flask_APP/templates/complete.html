@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -38,5 +38,89 @@
         </div>
     {% endfor %}
     <a href="/">Go Back to Home</a>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Enrollment Complete</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: #f0f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 80%;
+            max-width: 800px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+        }
+        p {
+            font-size: 16px;
+            color: #555;
+        }
+        .answer-block {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .answer-block h3 {
+            margin-top: 0;
+            color: #444;
+        }
+        pre {
+            background-color: #f4f4f4;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 14px;
+            color: #333;
+            overflow-x: auto;
+        }
+        a {
+            display: block;
+            margin-top: 20px;
+            text-align: center;
+            color: #007bff;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enrollment Complete</h1>
+        <p><strong>Username:</strong> {{ user['user_id'] }}</p>
+        <h2>Your Answers:</h2>
+        {% for question, data in user['answers'].items() %}
+            <div class="answer-block">
+                <h3>{{ loop.index }}. {{ data['question_text'] }}</h3>
+                <p><strong>Transcription:</strong> {{ data['transcription'] }}</p>
+                <p><strong>Embeddings:</strong></p>
+                {% for embedding in data['embeddings'] %}
+                    <pre>{{ embedding['embedding'] }}</pre>
+                {% endfor %}
+            </div>
+        {% endfor %}
+        <a href="/">Go Back to Home</a>
+    </div>
 </body>
 </html>

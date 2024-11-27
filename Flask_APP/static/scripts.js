@@ -23,11 +23,33 @@ document.getElementById('loadQuestions').addEventListener('click', () => {
         });
 });
 
+// document.getElementById('reloadQuestions').addEventListener('click', () => {
+//     const username = document.getElementById('username').innerText;
+//     // if (!confirm("Are you sure you want to reload questions? All previous recordings will be cleared.")) {
+//     //     return;
+//     // }
+//     fetch('/get_questions')
+//         .then(response => response.json())
+//         .then(data => {
+//             questions = data.questions;
+//             document.getElementById('q1').innerText = questions[0];
+//             document.getElementById('q2').innerText = questions[1];
+//             document.getElementById('q3').innerText = questions[2];
+//             resetAllQuestions();
+//             alert("Questions reloaded. Previous recordings have been cleared.");
+//             // Enable the first question's Start Recording button
+            
+//             document.getElementById('startBtn1').disabled = false;
+//         })
+//         .catch(error => {
+//             console.error("Error reloading questions:", error);
+//             alert("Failed to reload questions. Please try again.");
+//         });
+// });
+
+
+// Reload Questions
 document.getElementById('reloadQuestions').addEventListener('click', () => {
-    const username = document.getElementById('username').innerText;
-    if (!confirm("Are you sure you want to reload questions? All previous recordings will be cleared.")) {
-        return;
-    }
     fetch('/get_questions')
         .then(response => response.json())
         .then(data => {
@@ -35,16 +57,20 @@ document.getElementById('reloadQuestions').addEventListener('click', () => {
             document.getElementById('q1').innerText = questions[0];
             document.getElementById('q2').innerText = questions[1];
             document.getElementById('q3').innerText = questions[2];
-            resetAllQuestions();
-            alert("Questions reloaded. Previous recordings have been cleared.");
-            // Enable the first question's Start Recording button
+            
+            // Re-enable the Start Recording buttons
             document.getElementById('startBtn1').disabled = false;
+            // document.getElementById('startBtn2').disabled = false;
+            // document.getElementById('startBtn3').disabled = false;
+
+            alert("Questions reloaded successfully!");
         })
         .catch(error => {
             console.error("Error reloading questions:", error);
             alert("Failed to reload questions. Please try again.");
         });
 });
+
 
 document.getElementById('cancelEnrollment').addEventListener('click', () => {
     const username = document.getElementById('username').innerText;
