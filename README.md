@@ -144,15 +144,15 @@ Audio_vault_ENC_DEC/
 - Multi-language audio processing support.
 - Enhanced UI/UX for seamless user experience.
 - Optimization of voice embedding algorithms for higher accuracy.
-
+- Use of LLMs to get the one work answer user will have freedom speak complete sentence.
 ---
-
+<!-- 
 ## 🤝 Contributing
 1. Fork the repository.
 2. Create a new branch for your changes.
-3. Submit a pull request with a detailed explanation.
+3. Submit a pull request with a detailed explanation. -->
 
----
+<!-- --- -->
 
 ## 📜 License
 This project is licensed under the **MIT License**.
