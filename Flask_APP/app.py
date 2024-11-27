@@ -38,34 +38,41 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 app = Flask(__name__)
-app.secret_key = 'abcdefghi'  # Replace with a strong, unpredictable secret key
+app.secret_key = 'abcdefghi'  
 app.secret_key = os.urandom(24)
 # ###############################################################################################################################
 # ###############################################################################################################################
 
-# MongoDB configuration
 app.config["MONGO_URI"] = "mongodb://localhost:27017/voice_authentication_system"
 mongo = PyMongo(app)
 users_collection = mongo.db.users
 # ###############################################################################################################################
 # ###############################################################################################################################
 
-# Initialize Whisper model for speech-to-text
 print("Loading Whisper model...")
+print('------------------------')
+print('------------------------')
 whisper_model = whisper.load_model("base")
 print("Whisper model loaded.")
+print('------------------------')
+print('------------------------')
+
 
 # ###############################################################################################################################
 # ###############################################################################################################################
-
-# Initialize SpeakerRecognition model from Speechbrain
 print("Loading SpeakerRecognition model...")
+print('------------------------')
+print('------------------------')
 verification = SpeakerRecognition.from_hparams(source="speechbrain/spkrec-ecapa-voxceleb", savedir="tmp")
 print("SpeakerRecognition model loaded.")
+print('------------------------')
+print('------------------------')
 # ###############################################################################################################################
 # ###############################################################################################################################
 
 
+print('------------------------')
+print('uniquestion loaded')
 unique_questions  = [
     "What is your favorite color?",
     "What is your pet's name?",
@@ -418,7 +425,6 @@ def compute_embedding(audio_data):
     if audio_array.ndim > 1:
         audio_array = audio_array[:, 0]
 
-    # Resample to 16000 Hz if necessary
     target_sample_rate = 16000
     if sample_rate != target_sample_rate:
         num_samples = int(len(audio_array) * target_sample_rate / sample_rate)
@@ -446,7 +452,6 @@ def compute_embedding(audio_data):
     return embedding
 # ###############################################################################################################################
 # ###############################################################################################################################
-
 
 def transcribe_audio(audio_data):
     """Transcribe the audio data using Whisper."""
@@ -498,35 +503,6 @@ def login():
 # ###############################################################################################################################
 # ###############################################################################################################################
 
-
-# @app.route('/authenticate', methods=['POST'])
-# def authenticate():
-#     user_id = request.form['user_id'].strip()
-
-#     if not user_id:
-#         return render_template('login.html', message="Username cannot be empty.", category="error")
-
-#     # Check if user exists
-#     user = users_collection.find_one({"user_id": user_id})
-#     if not user:
-#         return render_template('login.html', message="Username not found. Please enroll first.", category="error")
-
-#     # Check if user has any questions
-#     if not user.get('answers'):
-#         return render_template('login.html', message="No enrolled questions found. Please enroll first.", category="error")
-
-#     # Select one random question from the enrolled questions
-#     enrolled_questions = list(user['answers'].keys())  # Should be ['q1', 'q2', 'q3']
-#     selected_question = random.choice(enrolled_questions)
-
-#     # Store the selected question in session
-#     session['user_id'] = user_id
-#     session['selected_question'] = selected_question
-
-#     # Pass the question text to the template
-#     return render_template('verify.html', question=user['answers'][selected_question]['question_text'])
-
-
 @app.route('/authenticate', methods=['POST'])
 def authenticate():
     user_id = request.form['user_id'].strip()
@@ -575,110 +551,6 @@ def secure_dashboard():
     return render_template('secure_dashboard.html', user_id=user_id)
 
 # ###############################################################################################################################
-
-# ###############################################################################################################################
-
-# @app.route('/verify_answer', methods=['POST'])
-# def verify_answer():
-#     try:
-#         # Check if user_id and selected_question are in session
-#         if 'user_id' not in session or 'selected_question' not in session:
-#             logger.info("Session missing user_id or selected_question. Redirecting to login.")
-#             return jsonify({'status': 'error', 'message': 'Session expired. Please log in again.'}), 401
-
-#         user_id = session['user_id']
-#         question_key = session['selected_question']  # Should be 'q1', 'q2', etc.
-#         audio_file = request.files.get('audio')
-
-#         # Check if audio file is provided
-#         if not audio_file:
-#             logger.error("No audio file provided.")
-#             return jsonify({'status': 'error', 'message': 'No audio file provided.'}), 400
-
-#         # Read audio data
-#         audio_data = audio_file.read()
-
-#         # Convert audio to WAV format
-#         logger.info("Converting audio to WAV...")
-#         wav_data = convert_audio_to_wav(audio_data)
-#         if not wav_data:
-#             logger.error("Audio conversion failed.")
-#             return jsonify({'status': 'error', 'message': 'Audio conversion failed.'}), 500
-
-#         # Transcribe audio
-#         logger.info("Transcribing audio...")
-#         transcription = transcribe_audio(wav_data)
-#         if transcription.strip() == "":
-#             logger.error("Transcription failed or was empty.")
-#             return jsonify({'status': 'error', 'message': 'Transcription failed or was empty.'}), 500
-#         print('transcript----------------------')
-#         print(transcription.strip().lower())
-#         print(type(transcription))
-#         print('--------------------------------')
-# # ###############################################################################################################################
-#        # Compute embedding
-#         logger.info("Computing embedding...")
-#         embedding = compute_embedding(wav_data)
-#         if embedding is None:
-#             logger.error("Embedding computation failed.")
-#             return jsonify({'status': 'error', 'message': 'Embedding computation failed.'}), 500
-
-#         # Convert embedding to list for comparison
-#         embedding_list = embedding.tolist()
-# # ###############################################################################################################################
-
-#         # Retrieve user data from the database
-#         logger.info("Retrieving user data from the database...")
-#         user = users_collection.find_one({"user_id": user_id})
-#         if not user:
-#             logger.error(f"User {user_id} not found.")
-#             return jsonify({'status': 'error', 'message': 'User not found.'}), 404
-# # ###############################################################################################################################
-
-#         # Retrieve stored embeddings for the selected question
-#         question_data = user.get('answers', {}).get(question_key, {})
-#         stored_embeddings = [emb['embedding'] for emb in question_data.get('embeddings', [])]
-#         expected_transcription = question_data.get('transcription', "").strip().lower()
-        
-        
-#         print('right aswer---------------------')
-#         print(expected_transcription)
-#         print(repr(expected_transcription))
-#         print(type(expected_transcription))
-#         print('--------------------------------')
-#         if not stored_embeddings:
-#             logger.error(f"No stored embeddings found for question {question_key}.")
-#             return jsonify({'status': 'error', 'message': 'No stored embeddings found for this question.'}), 404
-# # ###############################################################################################################################
-#        # Compute cosine similarities
-#         logger.info("Computing cosine similarities...")
-#         similarities = compute_cosine_similarity(embedding_list, stored_embeddings)
-
-#         # Define similarity threshold
-#         THRESHOLD = 0.10  # Adjust based on your requirements
-
-#         # Find the maximum similarity
-#         max_similarity = max(similarities)
-#         logger.info(f"Max Similarity: {max_similarity}")
-
-#         # Log the result
-#         logger.info(f"Max Similarity for user {user_id} on question '{question_data.get('question_text', 'Unknown')}': {max_similarity}")
-# # ###############################################################################################################################
-#         transcription_pass = transcription == expected_transcription
-#         logger.info(f"Transcription Pass: {transcription_pass}")
-#         # Check if any similarity exceeds the threshold
-#         if max_similarity >= THRESHOLD and transcription_pass:
-#             # Successful authentication
-#             logger.info("Authentication successful.")
-#             return jsonify({'status': 'success', 'transcription': transcription, 'result': 'open'}), 200
-#         else:
-#             # Authentication failed
-#             logger.info("Authentication failed.")
-#             return jsonify({'status': 'error', 'message': 'Authentication failed.'}), 401
-
-#     except Exception as e:
-#         logger.exception("An unexpected error occurred during verification.")
-#         return jsonify({'status': 'error', 'message': 'An unexpected error occurred.'}), 500
 # ###############################################################################################################################
 
 @app.route('/verify_answer', methods=['POST'])
@@ -688,18 +560,22 @@ def verify_answer():
         if 'user_id' not in session or 'selected_question' not in session:
             logger.info("Session missing user_id or selected_question. Redirecting to login.")
             return jsonify({'status': 'error', 'message': 'Session expired. Please log in again.'}), 401
+# ###############################################################################################################################
 
         user_id = session['user_id']
         question_key = session['selected_question']  # Should be 'q1', 'q2', etc.
         audio_file = request.files.get('audio')
+# ###############################################################################################################################
 
         # Check if audio file is provided
         if not audio_file:
             logger.error("No audio file provided.")
             return jsonify({'status': 'error', 'message': 'No audio file provided.'}), 400
+# ###############################################################################################################################
 
         # Read audio data
         audio_data = audio_file.read()
+# ###############################################################################################################################
 
         # Convert audio to WAV format
         logger.info("Converting audio to WAV...")
@@ -707,6 +583,7 @@ def verify_answer():
         if not wav_data:
             logger.error("Audio conversion failed.")
             return jsonify({'status': 'error', 'message': 'Audio conversion failed.'}), 500
+# ###############################################################################################################################
 
         # Transcribe audio
         logger.info("Transcribing audio...")
@@ -718,6 +595,7 @@ def verify_answer():
         # Normalize transcription
         normalized_transcription = transcription.strip().lower()
         logger.info(f"Transcription: {repr(normalized_transcription)}")
+# ###############################################################################################################################
 
         # Compute embedding
         logger.info("Computing embedding...")
@@ -728,6 +606,7 @@ def verify_answer():
 
         # Convert embedding to list for comparison
         embedding_list = embedding.tolist()
+# ###############################################################################################################################
 
         # Retrieve user data from the database
         logger.info("Retrieving user data from the database...")
@@ -735,6 +614,7 @@ def verify_answer():
         if not user:
             logger.error(f"User {user_id} not found.")
             return jsonify({'status': 'error', 'message': 'User not found.'}), 404
+# ###############################################################################################################################
 
         # Retrieve stored embeddings for the selected question
         question_data = user.get('answers', {}).get(question_key, {})
@@ -742,21 +622,25 @@ def verify_answer():
         expected_transcription = question_data.get('transcription', "").strip().lower()
 
         logger.info(f"Expected Transcription: {repr(expected_transcription)}")
+# ###############################################################################################################################
 
         if not stored_embeddings:
             logger.error(f"No stored embeddings found for question {question_key}.")
             return jsonify({'status': 'error', 'message': 'No stored embeddings found for this question.'}), 404
+# ###############################################################################################################################
 
         # Compute cosine similarities
         logger.info("Computing cosine similarities...")
         similarities = compute_cosine_similarity(embedding_list, stored_embeddings)
+# ###############################################################################################################################
 
         # Define similarity threshold
-        THRESHOLD = 0.10  # Adjust based on your requirements
+        THRESHOLD = 0.40  # Adjust based on your requirements
 
         # Find the maximum similarity
         max_similarity = max(similarities) if similarities else 0
         logger.info(f"Max Similarity: {max_similarity}")
+# ###############################################################################################################################
 
         # Check transcription match
         transcription_pass = normalized_transcription == expected_transcription
@@ -765,11 +649,13 @@ def verify_answer():
         # Check if any similarity exceeds the threshold
         similarity_pass = max_similarity >= THRESHOLD
         logger.info(f"Similarity Pass: {similarity_pass}")
+# ###############################################################################################################################
 
         # if similarity_pass and transcription_pass:
         #     # Successful authentication
         #     logger.info("Authentication successful.")
         #     return jsonify({'status': 'success', 'transcription': transcription, 'result': 'open'}), 200
+
         if similarity_pass:
             # Successful authentication
             logger.info("Authentication successful.")
@@ -783,11 +669,12 @@ def verify_answer():
                 failure_reasons.append("Transcription does not match expected answer.")
             logger.info("Authentication failed.")
             return jsonify({'status': 'error', 'message': ' '.join(failure_reasons)}), 401
+# ###############################################################################################################################
 
     except Exception as e:
         logger.exception("An unexpected error occurred during verification.")
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred.'}), 500
-
+# ###############################################################################################################################
 # ###############################################################################################################################
 
 @app.route('/logout')
