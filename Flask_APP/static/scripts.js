@@ -3,19 +3,32 @@ let embeddings = [[], [], []]; // Stores embedding objects per question
 let recordingAttempts = [0, 0, 0]; // Tracks number of submissions per question
 let mediaRecorders = [null, null, null]; // Stores MediaRecorder instances
 
+
+
+
+
 document.getElementById('loadQuestions').addEventListener('click', () => {
-    fetch('/get_questions')
+    const username = document.getElementById('username').innerText.trim();
+    fetch(`/get_questions?user_id=${encodeURIComponent(username)}&reload=true`)
         .then(response => response.json())
         .then(data => {
+            if (data.status === 'error') {
+                alert(data.message);
+                return;
+            }
+            // Update questions with the new set
             questions = data.questions;
             document.getElementById('q1').innerText = questions[0];
             document.getElementById('q2').innerText = questions[1];
             document.getElementById('q3').innerText = questions[2];
             document.getElementById('questionsContainer').style.display = 'block';
-            document.getElementById('loadQuestions').disabled = true;
-            document.getElementById('reloadQuestions').disabled = false;
-            // Enable the first question's Start Recording button
+
+            // Re-enable the Start Recording buttons for the new questions
             document.getElementById('startBtn1').disabled = false;
+            document.getElementById('startBtn2').disabled = false;
+            document.getElementById('startBtn3').disabled = false;
+
+            alert("Questions loaded successfully!");
         })
         .catch(error => {
             console.error("Error fetching questions:", error);
@@ -23,53 +36,6 @@ document.getElementById('loadQuestions').addEventListener('click', () => {
         });
 });
 
-// document.getElementById('reloadQuestions').addEventListener('click', () => {
-//     const username = document.getElementById('username').innerText;
-//     // if (!confirm("Are you sure you want to reload questions? All previous recordings will be cleared.")) {
-//     //     return;
-//     // }
-//     fetch('/get_questions')
-//         .then(response => response.json())
-//         .then(data => {
-//             questions = data.questions;
-//             document.getElementById('q1').innerText = questions[0];
-//             document.getElementById('q2').innerText = questions[1];
-//             document.getElementById('q3').innerText = questions[2];
-//             resetAllQuestions();
-//             alert("Questions reloaded. Previous recordings have been cleared.");
-//             // Enable the first question's Start Recording button
-            
-//             document.getElementById('startBtn1').disabled = false;
-//         })
-//         .catch(error => {
-//             console.error("Error reloading questions:", error);
-//             alert("Failed to reload questions. Please try again.");
-//         });
-// });
-
-
-// Reload Questions
-document.getElementById('reloadQuestions').addEventListener('click', () => {
-    fetch('/get_questions')
-        .then(response => response.json())
-        .then(data => {
-            questions = data.questions;
-            document.getElementById('q1').innerText = questions[0];
-            document.getElementById('q2').innerText = questions[1];
-            document.getElementById('q3').innerText = questions[2];
-            
-            // Re-enable the Start Recording buttons
-            document.getElementById('startBtn1').disabled = false;
-            // document.getElementById('startBtn2').disabled = false;
-            // document.getElementById('startBtn3').disabled = false;
-
-            alert("Questions reloaded successfully!");
-        })
-        .catch(error => {
-            console.error("Error reloading questions:", error);
-            alert("Failed to reload questions. Please try again.");
-        });
-});
 
 
 document.getElementById('cancelEnrollment').addEventListener('click', () => {

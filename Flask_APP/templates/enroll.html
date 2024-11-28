@@ -2,20 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Enroll Your Voice</title>
+    <title>Enrollment</title>
+    <!-- Include your CSS and other head elements here -->
     <style>
         body {
             background-color: #5998e4;
             font-family: Arial, sans-serif;
             margin: 20px;
         }
-        .question-block {
+        .question-section {
             border: 1px solid #ccc;
             padding: 15px;
             margin-bottom: 15px;
         }
-        .question-block h3 {
-            margin-top: 0;
+        .question-section p {
+            margin: 5px 0;
         }
         button {
             margin-right: 10px;
@@ -47,60 +48,59 @@
     </style>
 </head>
 <body>
-    
-    <h1>Enroll Your Voice</h1>
-    <p><strong>Username:</strong> <span id="username">{{ user_id }}</span></p>
-    <div id="controls">
-        <button id="loadQuestions">Load Questions</button>
-        <button id="reloadQuestions" disabled>Reload Questions</button>
-        <button id="cancelEnrollment">Cancel Enrollment</button>
-    </div>
-    <div id="questionsContainer" style="display:none;">
-        <div id="question1" class="question-block">
-            <h3>Question 1</h3>
+    <h1>Enrollment for User: <span id="username">{{ user_id }}</span></h1>
+
+    <button id="loadQuestions">Load Questions / reload for other question</button>
+    <!-- <button id="reloadQuestions" disabled>Reload Questions</button> -->
+
+    <div id="questionsContainer" style="display: none;">
+        <!-- Question 1 -->
+        <div>
             <p id="q1"></p>
-            <button onclick="startRecording(1)" id="startBtn1" disabled>Start Recording</button>
-            <button onclick="stopRecording(1)" id="stopBtn1" disabled>Stop Recording</button>
-            <button onclick="submitRecording(1)" id="submitBtn1" disabled>Submit</button>
-            <button onclick="reRecord(1)" id="reRecordBtn1" disabled>Re-record</button>
-            <p id="transcript1" class="transcription"></p>
-            <p id="error1" class="error"></p>
-            <p id="counter1" class="counter">Attempts: 0/3</p>
-            <div class="recording-list" id="recordingList1">
-                <!-- Existing recordings will be listed here -->
-            </div>
+            <button id="startBtn1" disabled onclick="startRecording(1)">Start Recording</button>
+            <button id="stopBtn1" disabled onclick="stopRecording(1)">Stop Recording</button>
+            <p id="transcript1"></p>
+            <p id="error1" style="color: red;"></p>
+            <button id="submitBtn1" disabled onclick="submitRecording(1)">Submit</button>
+            <button id="reRecordBtn1" disabled onclick="reRecord(1)">Re-record</button>
+            <button id="deleteBtn1" disabled onclick="deleteRecording(1, 'recording_id')">Delete</button>
+            <p id="counter1">Attempts: 0/3</p>
+            <div id="recordingList1"></div>
         </div>
-        <div id="question2" class="question-block">
-            <h3>Question 2</h3>
+
+        <!-- Question 2 -->
+        <div>
             <p id="q2"></p>
-            <button onclick="startRecording(2)" id="startBtn2" disabled>Start Recording</button>
-            <button onclick="stopRecording(2)" id="stopBtn2" disabled>Stop Recording</button>
-            <button onclick="submitRecording(2)" id="submitBtn2" disabled>Submit</button>
-            <button onclick="reRecord(2)" id="reRecordBtn2" disabled>Re-record</button>
-            <p id="transcript2" class="transcription"></p>
-            <p id="error2" class="error"></p>
-            <p id="counter2" class="counter">Attempts: 0/3</p>
-            <div class="recording-list" id="recordingList2">
-                <!-- Existing recordings will be listed here -->
-            </div>
+            <button id="startBtn2" disabled onclick="startRecording(2)">Start Recording</button>
+            <button id="stopBtn2" disabled onclick="stopRecording(2)">Stop Recording</button>
+            <p id="transcript2"></p>
+            <p id="error2" style="color: red;"></p>
+            <button id="submitBtn2" disabled onclick="submitRecording(2)">Submit</button>
+            <button id="reRecordBtn2" disabled onclick="reRecord(2)">Re-record</button>
+            <button id="deleteBtn2" disabled onclick="deleteRecording(2, 'recording_id')">Delete</button>
+            <p id="counter2">Attempts: 0/3</p>
+            <div id="recordingList2"></div>
         </div>
-        <div id="question3" class="question-block">
-            <h3>Question 3</h3>
+
+        <!-- Question 3 -->
+        <div>
             <p id="q3"></p>
-            <button onclick="startRecording(3)" id="startBtn3" disabled>Start Recording</button>
-            <button onclick="stopRecording(3)" id="stopBtn3" disabled>Stop Recording</button>
-            <button onclick="submitRecording(3)" id="submitBtn3" disabled>Submit</button>
-            <button onclick="reRecord(3)" id="reRecordBtn3" disabled>Re-record</button>
-            <p id="transcript3" class="transcription"></p>
-            <p id="error3" class="error"></p>
-            <p id="counter3" class="counter">Attempts: 0/3</p>
-            <div class="recording-list" id="recordingList3">
-                <!-- Existing recordings will be listed here -->
-            </div>
+            <button id="startBtn3" disabled onclick="startRecording(3)">Start Recording</button>
+            <button id="stopBtn3" disabled onclick="stopRecording(3)">Stop Recording</button>
+            <p id="transcript3"></p>
+            <p id="error3" style="color: red;"></p>
+            <button id="submitBtn3" disabled onclick="submitRecording(3)">Submit</button>
+            <button id="reRecordBtn3" disabled onclick="reRecord(3)">Re-record</button>
+            <button id="deleteBtn3" disabled onclick="deleteRecording(3, 'recording_id')">Delete</button>
+            <p id="counter3">Attempts: 0/3</p>
+            <div id="recordingList3"></div>
         </div>
-        <button id="finishEnrollment" disabled onclick="finishEnrollment()">Finish Enrollment</button>
     </div>
 
-    <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+    <button id="finishEnrollment" disabled onclick="finishEnrollment()">Finish Enrollment</button>
+    <button id="cancelEnrollment">Cancel Enrollment</button>
+
+    <!-- Include your JavaScript here -->
+    <script src="/static/scripts.js"></script>
 </body>
 </html>

@@ -22,32 +22,20 @@ import logging
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, flash
 from flask import jsonify
 from difflib import SequenceMatcher
-# ###############################################################################################################################
-# ###############################################################################################################################
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ###############################################################################################################################
-# ###############################################################################################################################
-
 warnings.filterwarnings("ignore", category=FutureWarning)
-# ###############################################################################################################################
-# ###############################################################################################################################
 
 
 app = Flask(__name__)
-app.secret_key = 'abcdefghi'  
 app.secret_key = os.urandom(24)
-# ###############################################################################################################################
-# ###############################################################################################################################
 
 app.config["MONGO_URI"] = "mongodb://localhost:27017/voice_authentication_system"
 mongo = PyMongo(app)
 users_collection = mongo.db.users
-# ###############################################################################################################################
-# ###############################################################################################################################
 
 print("Loading Whisper model...")
 print('------------------------')
@@ -58,8 +46,6 @@ print('------------------------')
 print('------------------------')
 
 
-# ###############################################################################################################################
-# ###############################################################################################################################
 print("Loading SpeakerRecognition model...")
 print('------------------------')
 print('------------------------')
@@ -67,8 +53,6 @@ verification = SpeakerRecognition.from_hparams(source="speechbrain/spkrec-ecapa-
 print("SpeakerRecognition model loaded.")
 print('------------------------')
 print('------------------------')
-# ###############################################################################################################################
-# ###############################################################################################################################
 
 
 print('------------------------')
@@ -394,8 +378,6 @@ num_unique = len(unique_questions)
 num_samples = 200 - num_unique
 
 questions = unique_questions + [f"Sample question {i}" for i in range(1, num_samples + 1)]
-# ###############################################################################################################################
-# ###############################################################################################################################
 
 def convert_audio_to_wav(audio_data):
     """Convert uploaded audio data to WAV format using pydub."""
@@ -410,8 +392,6 @@ def convert_audio_to_wav(audio_data):
         print(f"Error converting audio: {e}")
         return None
 
-# ###############################################################################################################################
-# ###############################################################################################################################
 
 def compute_embedding(audio_data):
     """Generate an embedding from the audio data using Speechbrain."""
@@ -450,8 +430,6 @@ def compute_embedding(audio_data):
     embedding = embedding.squeeze(0)
 
     return embedding
-# ###############################################################################################################################
-# ###############################################################################################################################
 
 def transcribe_audio(audio_data):
     """Transcribe the audio data using Whisper."""
@@ -464,8 +442,6 @@ def transcribe_audio(audio_data):
     except Exception as e:
         print(f"Error transcribing audio: {e}")
         return ""
-# ###############################################################################################################################
-# ###############################################################################################################################
 
 def compute_cosine_similarity(new_embedding, stored_embeddings):
     """Compute cosine similarity between new embedding and all stored embeddings."""
@@ -493,15 +469,390 @@ def compute_cosine_similarity(new_embedding, stored_embeddings):
         similarities.append(similarity)
     
     return similarities
-# ###############################################################################################################################
-# ###############################################################################################################################
+
+
+
+
+# def update_embedding_incrementally(old_embedding, new_embedding, alpha=0.5):
+#     """Update embedding by combining old and new embeddings."""
+#     updated_embedding = alpha * old_embedding + (1 - alpha) * new_embedding
+#     # Normalize the updated embedding
+#     updated_embedding = updated_embedding / torch.norm(updated_embedding)
+#     return updated_embedding
+
+def update_embedding_incrementally(old_embedding, new_embedding, alpha=0.9):
+    """Update embedding by combining old and new embeddings."""
+    updated_embedding = alpha * torch.tensor(old_embedding) + (1 - alpha) * torch.tensor(new_embedding)
+    # Normalize the updated embedding
+    updated_embedding = updated_embedding / torch.norm(updated_embedding)
+    print(f"New Embeddings: {updated_embedding}")
+
+    return updated_embedding.tolist()  # Convert back to list for JSON serialization
+
 
 @app.route('/login')
 def login():
     return render_template('login.html')
 
-# ###############################################################################################################################
-# ###############################################################################################################################
+@app.route('/secure_dashboard')
+def secure_dashboard():
+    user_id = session.get('user_id')
+    if not user_id:
+        logger.info("No user_id in session. Redirecting to login.")
+        return redirect(url_for('login'))
+    logger.info(f"Rendering secure_dashboard for user_id: {user_id}")
+    return render_template('secure_dashboard.html', user_id=user_id)
+
+
+@app.route('/verify_answer', methods=['POST'])
+def verify_answer():
+    try:
+        # Check if user_id and selected_question are in session
+        if 'user_id' not in session or 'selected_question' not in session:
+            logger.info("Session missing user_id or selected_question. Redirecting to login.")
+            return jsonify({'status': 'error', 'message': 'Session expired. Please log in again.'}), 401
+
+        user_id = session['user_id']
+        question_key = session['selected_question']  # Should be 'q1', 'q2', etc.
+        audio_file = request.files.get('audio')
+
+        # Check if audio file is provided
+        if not audio_file:
+            logger.error("No audio file provided.")
+            return jsonify({'status': 'error', 'message': 'No audio file provided.'}), 400
+
+        # Read audio data
+        audio_data = audio_file.read()
+        wav_data = convert_audio_to_wav(audio_data)  # Ensure wav_data is defined
+        if not wav_data:
+            logger.error("Audio conversion failed.")
+            return jsonify({'status': 'error', 'message': 'Audio conversion failed.'}), 500
+
+        # Transcribe audio
+        logger.info("Transcribing audio...")
+        transcription = transcribe_audio(wav_data)
+        if transcription.strip() == "":
+            logger.error("Transcription failed or was empty.")
+            return jsonify({'status': 'error', 'message': 'Transcription failed or was empty.'}), 500
+
+        # Normalize transcription
+        normalized_transcription = transcription.strip().lower()
+        logger.info(f"Transcription: {repr(normalized_transcription)}")
+
+        # Compute embedding
+        logger.info("Computing embedding...")
+        embedding = compute_embedding(wav_data)
+        if embedding is None:
+            logger.error("Embedding computation failed.")
+            return jsonify({'status': 'error', 'message': 'Embedding computation failed.'}), 500
+
+        # Convert embedding to list for comparison
+        embedding_list = embedding.tolist()
+
+        # Retrieve user data from the database
+        logger.info("Retrieving user data from the database...")
+        user = users_collection.find_one({"user_id": user_id})
+        if not user:
+            logger.error(f"User {user_id} not found.")
+            return jsonify({'status': 'error', 'message': 'User not found.'}), 404
+
+        # Retrieve stored embeddings for the selected question
+        question_data = user.get('answers', {}).get(question_key, {})
+        stored_embeddings = [emb['embedding'] for emb in question_data.get('embeddings', [])]
+        expected_transcription = question_data.get('transcription', "").strip().lower()
+        logger.info(f"Total Number of embeddings compared: {len(stored_embeddings)}")
+        logger.info(f"Old Embeddings: {stored_embeddings}")
+        logger.info(f"Expected Transcription: {repr(expected_transcription)}")
+
+        if not stored_embeddings:
+            logger.error(f"No stored embeddings found for question {question_key}.")
+            return jsonify({'status': 'error', 'message': 'No stored embeddings found for this question.'}), 404
+
+        # Compute cosine similarities
+        logger.info("Computing cosine similarities...")
+        similarities = compute_cosine_similarity(embedding_list, stored_embeddings)
+
+        # Define similarity threshold
+        THRESHOLD = 0.65  # Adjust based on your requirements
+
+        # Find the maximum similarity
+        max_similarity = max(similarities) if similarities else 0
+        logger.info(f"Max Similarity: {max_similarity}")
+
+        # Check transcription match
+        transcription_pass = normalized_transcription == expected_transcription
+        logger.info(f"Transcription Pass: {transcription_pass}")
+
+        # Check if any similarity exceeds the threshold
+        similarity_pass = max_similarity >= THRESHOLD
+        logger.info(f"Similarity Pass: {similarity_pass}")
+
+        if similarity_pass:
+            # Successful authentication
+            logger.info("Authentication successful.")
+
+            # --- Embedding Update Logic Starts Here ---
+
+            # Retrieve the list of stored embeddings
+            # Assuming you want to update each stored embedding incrementally
+            updated_embeddings = []
+            for old_emb in stored_embeddings:
+                updated_emb = update_embedding_incrementally(old_emb, embedding_list)
+                updated_embeddings.append(updated_emb)
+
+            # Optionally, limit the number of stored embeddings to prevent unbounded growth
+            MAX_EMBEDDINGS = 10  # Example limit
+            if len(updated_embeddings) > MAX_EMBEDDINGS:
+                updated_embeddings = updated_embeddings[:MAX_EMBEDDINGS]
+
+            # Update the embeddings in the database
+            update_result = users_collection.update_one(
+                {"user_id": user_id, f"answers.{question_key}": {"$exists": True}},
+                {"$set": {f"answers.{question_key}.embeddings": [{"embedding": emb} for emb in updated_embeddings]}}
+            )
+
+            if update_result.modified_count == 1:
+                logger.info("Embeddings successfully updated in the database.")
+            else:
+                logger.warning("Failed to update embeddings in the database.")
+
+            # --- Embedding Update Logic Ends Here ---
+
+            return jsonify({'status': 'success', 'transcription': transcription, 'result': 'open'}), 200
+        else:
+            # Authentication failed
+            failure_reasons = []
+            if not similarity_pass:
+                failure_reasons.append("Voice does not match.")
+            if not transcription_pass:
+                failure_reasons.append("Transcription does not match expected answer.")
+            logger.info("Authentication failed.")
+            return jsonify({'status': 'error', 'message': ' '.join(failure_reasons)}), 401
+
+    except Exception as e:
+        logger.exception("An unexpected error occurred during verification.")
+        return jsonify({'status': 'error', 'message': 'An unexpected error occurred.'}), 500
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/enroll', methods=['POST'])
+def enroll():
+    user_id = request.form['user_id'].strip()
+
+    if not user_id:
+        return render_template('index.html', message="Username cannot be empty.")
+
+    # Check if user already exists
+    if users_collection.find_one({"user_id": user_id}):
+        return render_template('index.html', message="Username already exists. Please choose a different one.")
+
+    # Initialize user data with empty answers (dictionary with questions as keys and their data)
+    users_collection.insert_one({"user_id": user_id, "answers": {}})
+
+    return render_template('enroll.html', user_id=user_id)
+
+@app.route('/get_questions', methods=['GET'])
+def get_questions():
+    user_id = request.args.get('user_id')
+    reload = request.args.get('reload', 'false').lower() == 'true'  # New parameter
+
+    if not user_id:
+        return jsonify({'status': 'error', 'message': 'User ID is required.'}), 400
+
+    # Reference the global `questions` variable
+    global questions
+
+    user = users_collection.find_one({"user_id": user_id})
+    if not user:
+        return jsonify({'status': 'error', 'message': 'User not found.'}), 404
+
+    if reload:
+        # Clear existing answers to allow assignment of new questions
+        users_collection.update_one({'user_id': user_id}, {'$unset': {'answers': ""}})
+        answers = {}
+    else:
+        answers = user.get('answers', {})
+
+    # Assign new questions if reload is requested or less than 3 questions are assigned
+    if reload or len(answers) < 3:
+        if not reload:
+            # Exclude already assigned questions to ensure uniqueness
+            assigned_questions = set(q['question_text'] for q in answers.values())
+            available_questions = list(set(questions) - assigned_questions)
+        else:
+            # All questions are available since answers are cleared
+            available_questions = questions.copy()
+
+        if len(available_questions) < 3:
+            return jsonify({'status': 'error', 'message': 'Not enough unique questions available.'}), 500
+
+        selected_questions = random.sample(available_questions, 3)
+        update = {}
+        for i, q in enumerate(selected_questions, 1):
+            update[f'answers.q{i}.question_text'] = q
+            update[f'answers.q{i}.embeddings'] = []
+            update[f'answers.q{i}.transcription'] = ""
+        users_collection.update_one({'user_id': user_id}, {'$set': update})
+        questions_list = selected_questions
+    else:
+        # Retrieve already assigned questions
+        questions_list = [answers[f'q{i}']['question_text'] for i in range(1, 4)]
+
+    return jsonify({'questions': questions_list})
+
+@app.route('/submit_answer', methods=['POST'])
+def submit_answer():
+    user_id = request.form.get('user_id', '').strip()
+    question_text = request.form.get('question', '').strip()
+    audio_file = request.files.get('audio')
+
+    if not all([user_id, question_text, audio_file]):
+        return jsonify({"status": "error", "message": "Missing parameters."}), 400
+
+    try:
+        # Read user data
+        user = users_collection.find_one({"user_id": user_id})
+        if not user:
+            return jsonify({"status": "error", "message": "User not found."}), 404
+
+        # Match the question text to the stored questions
+        answers = user.get('answers', {})
+        question_key = None
+        for key, value in answers.items():
+            if value.get('question_text', '').strip().lower() == question_text.strip().lower():
+                question_key = key
+                break
+
+        if not question_key:
+            return jsonify({'status': 'error', 'message': 'Question not found.'}), 404
+
+        # Process audio data (convert, transcribe, and compute embedding)
+        audio_data = audio_file.read()
+        wav_data = convert_audio_to_wav(audio_data)
+        if not wav_data:
+            return jsonify({'status': 'error', 'message': 'Audio conversion failed.'}), 500
+        
+        transcription = transcribe_audio(wav_data)
+        if transcription.strip() == "":
+            return jsonify({'status': 'error', 'message': 'Transcription failed or was empty.'}), 500
+
+        embedding = compute_embedding(wav_data)
+        if embedding is None:
+            return jsonify({'status': 'error', 'message': 'Embedding computation failed.'}), 500
+
+        # Update the user's answer data
+        recording_id = str(uuid.uuid4())
+        embedding_data = {"recording_id": recording_id, "embedding": embedding.tolist()}
+        users_collection.update_one(
+            {"user_id": user_id},
+            {
+                "$push": {f"answers.{question_key}.embeddings": embedding_data},
+                "$set": {f"answers.{question_key}.transcription": transcription.strip().lower()},
+            }
+        )
+
+        return jsonify({"status": "success", "transcription": transcription, "recording_id": recording_id}), 200
+
+    except Exception as e:
+        logger.exception("Unexpected error in submit_answer.")
+        return jsonify({"status": "error", "message": "An unexpected error occurred."}), 500
+
+@app.route('/delete_recording', methods=['POST'])
+def delete_recording():
+    user_id = request.form.get('user_id')
+    question_text = request.form.get('question')
+    recording_id = request.form.get('recording_id')
+
+    logger.info(f"Received delete_recording request for user_id: {user_id}, question: {question_text}, recording_id: {recording_id}")
+
+    if not all([user_id, question_text, recording_id]):
+        logger.warning("Missing parameters in delete_recording request.")
+        return jsonify({"status": "error", "message": "Missing parameters."}), 400
+
+    # Find the question key based on question_text
+    user = users_collection.find_one({"user_id": user_id})
+    if not user:
+        logger.warning(f"User {user_id} not found.")
+        return jsonify({"status": "error", "message": "User not found."}), 404
+
+    answers = user.get('answers', {})
+    question_key = None
+    for key, value in answers.items():
+        if value.get('question_text') == question_text:
+            question_key = key
+            break
+
+    if not question_key:
+        logger.warning(f"Question '{question_text}' not found for user {user_id}.")
+        return jsonify({"status": "error", "message": "Question not found."}), 404
+
+    # Remove the embedding with the given recording_id
+    result = users_collection.update_one(
+        {"user_id": user_id},
+        {"$pull": {f"answers.{question_key}.embeddings": {"recording_id": recording_id}}}
+    )
+
+    if result.modified_count > 0:
+        logger.info(f"Recording {recording_id} deleted for user {user_id}, question {question_key}.")
+
+        # Check if any embeddings remain
+        user = users_collection.find_one({"user_id": user_id})
+        embeddings = user.get('answers', {}).get(question_key, {}).get('embeddings', [])
+
+        if not embeddings:
+            # Reset transcription since no embeddings remain
+            users_collection.update_one(
+                {"user_id": user_id},
+                {"$set": {f"answers.{question_key}.transcription": ""}}
+            )
+            logger.info(f"Transcription reset for question {question_key} as no embeddings remain.")
+
+        return jsonify({"status": "success", "message": "Recording deleted."})
+    else:
+        logger.warning(f"Recording {recording_id} not found for user {user_id}, question {question_key}.")
+        return jsonify({"status": "error", "message": "Recording not found."}), 404
+
+@app.route('/finalize_enrollment', methods=['POST'])
+def finalize_enrollment():
+    data = request.get_json()
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({"status": "error", "message": "User ID is required."}), 400
+
+    user = users_collection.find_one({"user_id": user_id})
+    if not user:
+        return jsonify({"status": "error", "message": "User not found."}), 404
+
+    # Optionally, set a flag to indicate enrollment completion
+    users_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"enrollment_complete": True}}
+    )
+
+    return jsonify({"status": "success", "message": "Enrollment finalized."})
+
+@app.route('/complete/<user_id>')
+def complete(user_id):
+    user = users_collection.find_one({"user_id": user_id})
+    if not user:
+        return "User not found", 404
+    return render_template('complete.html', user=user)
+
+@app.route('/cancel_enrollment', methods=['POST'])
+def cancel_enrollment():
+    user_id = request.form['user_id']
+    users_collection.delete_one({"user_id": user_id})
+    return jsonify({"status": "success", "message": "Enrollment canceled and data deleted."})
+
 
 @app.route('/authenticate', methods=['POST'])
 def authenticate():
@@ -511,7 +862,7 @@ def authenticate():
         return render_template('login.html', message="Username cannot be empty.", category="error")
 
     # Check if user exists in the database
-    user = users_collection.find_one({"user_id": user_id})
+    user = users_collection.find_one({"user_id": user_id})  # Use consistent key: `user_id`
     if not user:
         return render_template('login.html', message="Username not found. Please enroll first.", category="error")
 
@@ -536,323 +887,6 @@ def authenticate():
 
     # Render the verify page with the selected question
     return render_template('verify.html', question=question_text)
-
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-
-@app.route('/secure_dashboard')
-def secure_dashboard():
-    user_id = session.get('user_id')
-    if not user_id:
-        logger.info("No user_id in session. Redirecting to login.")
-        return redirect(url_for('login'))
-    logger.info(f"Rendering secure_dashboard for user_id: {user_id}")
-    return render_template('secure_dashboard.html', user_id=user_id)
-
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-@app.route('/verify_answer', methods=['POST'])
-def verify_answer():
-    try:
-        # Check if user_id and selected_question are in session
-        if 'user_id' not in session or 'selected_question' not in session:
-            logger.info("Session missing user_id or selected_question. Redirecting to login.")
-            return jsonify({'status': 'error', 'message': 'Session expired. Please log in again.'}), 401
-# ###############################################################################################################################
-
-        user_id = session['user_id']
-        question_key = session['selected_question']  # Should be 'q1', 'q2', etc.
-        audio_file = request.files.get('audio')
-# ###############################################################################################################################
-
-        # Check if audio file is provided
-        if not audio_file:
-            logger.error("No audio file provided.")
-            return jsonify({'status': 'error', 'message': 'No audio file provided.'}), 400
-# ###############################################################################################################################
-
-        # Read audio data
-        audio_data = audio_file.read()
-# ###############################################################################################################################
-
-        # Convert audio to WAV format
-        logger.info("Converting audio to WAV...")
-        wav_data = convert_audio_to_wav(audio_data)
-        if not wav_data:
-            logger.error("Audio conversion failed.")
-            return jsonify({'status': 'error', 'message': 'Audio conversion failed.'}), 500
-# ###############################################################################################################################
-
-        # Transcribe audio
-        logger.info("Transcribing audio...")
-        transcription = transcribe_audio(wav_data)
-        if transcription.strip() == "":
-            logger.error("Transcription failed or was empty.")
-            return jsonify({'status': 'error', 'message': 'Transcription failed or was empty.'}), 500
-        
-        # Normalize transcription
-        normalized_transcription = transcription.strip().lower()
-        logger.info(f"Transcription: {repr(normalized_transcription)}")
-# ###############################################################################################################################
-
-        # Compute embedding
-        logger.info("Computing embedding...")
-        embedding = compute_embedding(wav_data)
-        if embedding is None:
-            logger.error("Embedding computation failed.")
-            return jsonify({'status': 'error', 'message': 'Embedding computation failed.'}), 500
-
-        # Convert embedding to list for comparison
-        embedding_list = embedding.tolist()
-# ###############################################################################################################################
-
-        # Retrieve user data from the database
-        logger.info("Retrieving user data from the database...")
-        user = users_collection.find_one({"user_id": user_id})
-        if not user:
-            logger.error(f"User {user_id} not found.")
-            return jsonify({'status': 'error', 'message': 'User not found.'}), 404
-# ###############################################################################################################################
-
-        # Retrieve stored embeddings for the selected question
-        question_data = user.get('answers', {}).get(question_key, {})
-        stored_embeddings = [emb['embedding'] for emb in question_data.get('embeddings', [])]
-        expected_transcription = question_data.get('transcription', "").strip().lower()
-
-        logger.info(f"Expected Transcription: {repr(expected_transcription)}")
-# ###############################################################################################################################
-
-        if not stored_embeddings:
-            logger.error(f"No stored embeddings found for question {question_key}.")
-            return jsonify({'status': 'error', 'message': 'No stored embeddings found for this question.'}), 404
-# ###############################################################################################################################
-
-        # Compute cosine similarities
-        logger.info("Computing cosine similarities...")
-        similarities = compute_cosine_similarity(embedding_list, stored_embeddings)
-# ###############################################################################################################################
-
-        # Define similarity threshold
-        THRESHOLD = 0.40  # Adjust based on your requirements
-
-        # Find the maximum similarity
-        max_similarity = max(similarities) if similarities else 0
-        logger.info(f"Max Similarity: {max_similarity}")
-# ###############################################################################################################################
-
-        # Check transcription match
-        transcription_pass = normalized_transcription == expected_transcription
-        logger.info(f"Transcription Pass: {transcription_pass}")
-
-        # Check if any similarity exceeds the threshold
-        similarity_pass = max_similarity >= THRESHOLD
-        logger.info(f"Similarity Pass: {similarity_pass}")
-# ###############################################################################################################################
-
-        # if similarity_pass and transcription_pass:
-        #     # Successful authentication
-        #     logger.info("Authentication successful.")
-        #     return jsonify({'status': 'success', 'transcription': transcription, 'result': 'open'}), 200
-
-        if similarity_pass:
-            # Successful authentication
-            logger.info("Authentication successful.")
-            return jsonify({'status': 'success', 'transcription': transcription, 'result': 'open'}), 200
-        else:
-            # Authentication failed
-            failure_reasons = []
-            if not similarity_pass:
-                failure_reasons.append("Voice does not match.")
-            if not transcription_pass:
-                failure_reasons.append("Transcription does not match expected answer.")
-            logger.info("Authentication failed.")
-            return jsonify({'status': 'error', 'message': ' '.join(failure_reasons)}), 401
-# ###############################################################################################################################
-
-    except Exception as e:
-        logger.exception("An unexpected error occurred during verification.")
-        return jsonify({'status': 'error', 'message': 'An unexpected error occurred.'}), 500
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-
-@app.route('/')
-def home():
-    return render_template('index.html')
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-@app.route('/enroll', methods=['POST'])
-def enroll():
-    user_id = request.form['user_id'].strip()
-
-    if not user_id:
-        return render_template('index.html', message="Username cannot be empty.")
-
-    # Check if user already exists
-    if users_collection.find_one({"user_id": user_id}):
-        return render_template('index.html', message="Username already exists. Please choose a different one.")
-
-    # Initialize user data with empty answers (dictionary with questions as keys and their data)
-    users_collection.insert_one({"user_id": user_id, "answers": {}})
-
-    return render_template('enroll.html', user_id=user_id)
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-@app.route('/get_questions', methods=['GET'])
-def get_questions():
-    selected_questions = random.sample(questions, 3)
-    return jsonify({"questions": selected_questions})
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-
-@app.route('/submit_answer', methods=['POST'])
-def submit_answer():
-    user_id = request.form['user_id']
-    question_text = request.form['question']
-    audio_file = request.files['audio']
-
-    if not audio_file:
-        return jsonify({"status": "error", "message": "No audio file provided."}), 400
-
-    audio_data = audio_file.read()
-
-    # Convert audio to WAV
-    wav_data = convert_audio_to_wav(audio_data)
-    if not wav_data:
-        return jsonify({"status": "error", "message": "Audio conversion failed."}), 500
-
-    # Transcribe audio
-    transcription = transcribe_audio(wav_data)
-
-    if transcription.strip() == "":
-        return jsonify({"status": "error", "message": "Transcription failed or was empty."}), 500
-
-    # Compute embedding
-    embedding = compute_embedding(wav_data)
-    if embedding is None:
-        return jsonify({"status": "error", "message": "Embedding computation failed."}), 500
-
-    # Convert embedding to list for JSON serialization
-    embedding_list = embedding.tolist()
-
-    # Generate a unique ID for the recording
-    recording_id = str(uuid.uuid4())
-
-    # Prepare the data to store
-    embedding_data = {
-        "recording_id": recording_id,
-        "embedding": embedding_list
-    }
-
-    # Insert or update user data
-    user = users_collection.find_one({"user_id": user_id})
-    if not user:
-        return jsonify({"status": "error", "message": "User not found."}), 404
-
-    # Assigning to q1, q2, q3 based on existing entries
-    existing_questions = user.get('answers', {})
-    if len(existing_questions) < 3:
-        q_key = f"q{len(existing_questions) + 1}"
-        users_collection.update_one(
-            {"user_id": user_id},
-            {
-                "$set": {
-                    f"answers.{q_key}.question_text": question_text,
-                    f"answers.{q_key}.answer": transcription.lower(),
-                    f"answers.{q_key}.embeddings": [embedding_data]
-                }
-            },
-            upsert=True
-        )
-    else:
-        # Update existing question's embeddings
-        for q_key, q_data in existing_questions.items():
-            if q_data.get('question_text') == question_text:
-                users_collection.update_one(
-                    {"user_id": user_id},
-                    {"$push": {f"answers.{q_key}.embeddings": embedding_data}},
-                    upsert=True
-                )
-                break
-        else:
-            return jsonify({"status": "error", "message": "Question not found."}), 400
-
-    # Check if the user has answered all three questions
-    user = users_collection.find_one({"user_id": user_id})
-    if len(user.get('answers', {})) >= 3:
-        return jsonify({"status": "complete", "message": "Enrollment complete."})
-
-    return jsonify({"status": "success", "transcription": transcription.lower(), "recording_id": recording_id})
-
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-@app.route('/delete_recording', methods=['POST'])
-def delete_recording():
-    user_id = request.form['user_id']
-    question = request.form['question']
-    recording_id = request.form['recording_id']
-
-    # Remove the embedding from the user's data
-    result = users_collection.update_one(
-        {"user_id": user_id},
-        {"$pull": {f"answers.{question}.embeddings": {"recording_id": recording_id}}}
-    )
-
-    if result.modified_count > 0:
-        # Update transcription if embeddings remain
-        user = users_collection.find_one({"user_id": user_id})
-        embeddings = user.get('answers', {}).get(question, {}).get('embeddings', [])
-
-        if embeddings:
-            # Optionally, update the transcription to the latest one
-            latest_transcription = user.get('answers', {}).get(question, {}).get('transcription', "")
-            users_collection.update_one(
-                {"user_id": user_id},
-                {"$set": {f"answers.{question}.transcription": latest_transcription}}
-            )
-        else:
-            # If no embeddings left, remove the question from answers
-            users_collection.update_one(
-                {"user_id": user_id},
-                {"$unset": {f"answers.{question}": ""}}
-            )
-
-        return jsonify({"status": "success", "message": "Recording deleted."})
-    else:
-        return jsonify({"status": "error", "message": "Recording not found."}), 404
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-@app.route('/complete/<user_id>')
-def complete(user_id):
-    user = users_collection.find_one({"user_id": user_id})
-    if not user:
-        return "User not found", 404
-    return render_template('complete.html', user=user)
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-@app.route('/cancel_enrollment', methods=['POST'])
-def cancel_enrollment():
-    user_id = request.form['user_id']
-    users_collection.delete_one({"user_id": user_id})
-    return jsonify({"status": "success", "message": "Enrollment canceled and data deleted."})
-
-# ###############################################################################################################################
-# ###############################################################################################################################``
 @app.route('/encrypt')
 def encrypt():
     # Check if the user is logged in
@@ -993,39 +1027,6 @@ def process_encryption():
             category="error",
             user_id=user_id
         )
-# ###############################################################################################################################
-# ###############################################################################################################################
-
-def authenticate():
-    user_id = request.form['user_id'].strip()
-
-    if not user_id:
-        return render_template('login.html', message="Username cannot be empty.", category="error")
-
-    # Check if user exists in the database
-    user = users_collection.find_one({"username": user_id})  # Use consistent key: `username`
-    if not user:
-        return render_template('login.html', message="Username not found. Please enroll first.", category="error")
-
-    # Check if the user has enrolled questions and answers
-    if not user.get('transcriptions') or len(user.get('transcriptions')) < 3:
-        return render_template('login.html', message="Insufficient enrolled transcriptions. Please enroll first.", category="error")
-
-    # Get all enrolled questions
-    enrolled_questions = user.get('questions', [])
-    if not enrolled_questions:
-        return render_template('login.html', message="No enrolled questions found. Please enroll first.", category="error")
-
-    # Randomly select one question
-    selected_question = random.choice(enrolled_questions)
-
-    # Store the selected question and user_id in the session
-    session['user_id'] = user_id
-    session['selected_question'] = selected_question
-
-    # Render the verify page with the selected question
-    return render_template('verify.html', question=selected_question)
-
 
 # ###############################################################################################################################
 # ###############################################################################################################################
