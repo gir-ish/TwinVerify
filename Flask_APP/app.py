@@ -39,6 +39,39 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
+
+# Allowed extensions and their corresponding encryption executables and output patterns
+# Allowed extensions and their corresponding encryption executables and output patterns
+
+
+ALLOWED_EXTENSIONS = {
+    'txt': {
+        'executable': os.path.abspath('./C++/enc_txt'),
+        'output_pattern': 'encrypted_{filename}'  # Changed from 'encrypted_{filename}.txt' to 'encrypted_{filename}'
+    },
+    'jpg': {
+        'executable': os.path.abspath('./C++/enc_img'),
+        'output_pattern': 'encrypted_{filename}.txt'
+    },
+    'jpeg': {
+        'executable': os.path.abspath('./C++/enc_img'),
+        'output_pattern': 'encrypted_{filename}.txt'
+    },
+    'png': {
+        'executable': os.path.abspath('./C++/enc_img'),
+        'output_pattern': 'encrypted_{filename}.txt'
+    },
+    'mp3': {
+        'executable': os.path.abspath('./C++/enc_audio'),
+        'output_pattern': 'encrypted_audio_data.txt'  # As per current behavior
+    },
+    'wav': {
+        'executable': os.path.abspath('./C++/enc_audio'),
+        'output_pattern': 'encrypted_audio_data.txt'  # As per current behavior
+    }
+}
+
 print("mongo-Db..--------------")
 print('------------------------')
 print('------------------------')
@@ -409,6 +442,11 @@ num_samples = 200 - num_unique
 questions = unique_questions + [f"Sample question {i}" for i in range(1, num_samples + 1)]
 # ###############################################################################################################################
 # ###############################################################################################################################
+
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def convert_audio_to_wav(audio_data):
     """Convert uploaded audio data to WAV format using pydub."""
@@ -1097,6 +1135,132 @@ def authenticate():
 # ###############################################################################################################################
 # ###############################################################################################################################
 
+# @app.route('/encrypt')
+# def encrypt():
+#     # Check if the user is logged in
+#     if 'user_id' not in session:
+#         logger.info("No user_id in session. Redirecting to login.")
+#         return redirect(url_for('login'))
+
+#     # Fetch user details using `user_id` from the session
+#     user_id = session['user_id']
+#     user = users_collection.find_one({"user_id": user_id})
+
+#     # Check if the user exists and has completed enrollment
+#     if not user or not user.get('answers') or len(user['answers']) < 3:
+#         logger.info(f"User {user_id} not properly enrolled. Redirecting to secure dashboard.")
+#         return render_template(
+#             'secure_dashboard.html',
+#             message="Please complete enrollment first.",
+#             category="error",
+#             user_id=user_id
+#         )
+
+#     # Log the user's ID and proceed to encryption page
+#     logger.info(f"Rendering encrypt.html for user_id: {user_id}")
+
+#     # Render the encrypt page without any unrelated variables
+#     return render_template('encrypt.html', user_id=user_id)
+
+# # ###############################################################################################################################
+# # ###############################################################################################################################
+
+# @app.route('/process_encryption', methods=['POST'])
+# def process_encryption():
+#     if 'user_id' not in session:
+#         return redirect(url_for('login'))
+
+#     # Fetch `user_id` from session
+#     user_id = session['user_id']
+#     uploaded_file = request.files.get('file', None)
+
+#     if not uploaded_file:
+#         return render_template(
+#             'encrypt.html',
+#             message="File is required.",
+#             category="error",
+#             user_id=user_id
+#         )
+
+#     # Fetch user data from MongoDB using `user_id`
+#     user = users_collection.find_one({"user_id": user_id})
+#     if not user:
+#         return render_template(
+#             'encrypt.html',
+#             message="User not found. Please enroll first.",
+#             category="error",
+#             user_id=user_id
+#         )
+
+#     answers = user.get('answers', {})
+#     if len(answers) < 3:
+#         return render_template(
+#             'encrypt.html',
+#             message="Insufficient transcriptions for encryption. Please ensure at least 3 questions are enrolled.",
+#             category="error",
+#             user_id=user_id
+#         )
+
+#     # Extract transcriptions for the first 3 enrolled questions
+
+#     # Path to the C++ executable
+#     cpp_encrypt_executable = os.path.abspath('./C++/enc_txt')  # Absolute path to the executable
+#     cpp_dir = os.path.dirname(cpp_encrypt_executable)  # Directory of the executable
+
+#     # Move the file to the executable's directory
+#     filename = secure_filename(uploaded_file.filename)
+#     input_filepath = os.path.join(cpp_dir, filename)  # Copy file to the executable's directory
+#     uploaded_file.save(input_filepath)
+
+#     # Prepare arguments for the encryption command
+#     args = [cpp_encrypt_executable, filename]
+
+#     try:
+#         logger.info(f"Executing encryption with args: {args}")
+#         subprocess.run(args, check=True, cwd=cpp_dir)  # Set working directory to the executable's directory
+#         encrypted_filename = f"encrypted_{filename}"
+#         encrypted_filepath = os.path.join(cpp_dir, encrypted_filename)
+
+#         if not os.path.exists(encrypted_filepath):
+#             logger.error(f"Encrypted file not found: {encrypted_filepath}")
+#             return render_template(
+#                 'encrypt.html',
+#                 message="Encryption failed. Encrypted file not found.",
+#                 category="error",
+#                 user_id=user_id
+#             )
+
+#         # Read the encrypted file
+#         with open(encrypted_filepath, 'rb') as f:
+#             encrypted_data = f.read()
+
+#         # Clean up
+#         os.remove(input_filepath)
+#         os.remove(encrypted_filepath)
+
+#         # Provide the encrypted file for download
+#         return send_file(
+#             io.BytesIO(encrypted_data),
+#             as_attachment=True,
+#             download_name=encrypted_filename
+#         )
+#     except subprocess.CalledProcessError as e:
+#         logger.error(f"Encryption subprocess error: {e}")
+#         return render_template(
+#             'encrypt.html',
+#             message="An error occurred during encryption.",
+#             category="error",
+#             user_id=user_id
+#         )
+#     except Exception as e:
+#         logger.error(f"Unexpected error: {e}")
+#         return render_template(
+#             'encrypt.html',
+#             message="An unexpected error occurred.",
+#             category="error",
+#             user_id=user_id
+#         )
+
 @app.route('/encrypt')
 def encrypt():
     # Check if the user is logged in
@@ -1124,22 +1288,28 @@ def encrypt():
     # Render the encrypt page without any unrelated variables
     return render_template('encrypt.html', user_id=user_id)
 
-# ###############################################################################################################################
-# ###############################################################################################################################
-
 @app.route('/process_encryption', methods=['POST'])
 def process_encryption():
     if 'user_id' not in session:
+        logger.info("No user_id in session. Redirecting to login.")
         return redirect(url_for('login'))
 
     # Fetch `user_id` from session
     user_id = session['user_id']
     uploaded_file = request.files.get('file', None)
 
-    if not uploaded_file:
+    if not uploaded_file or uploaded_file.filename == '':
         return render_template(
             'encrypt.html',
             message="File is required.",
+            category="error",
+            user_id=user_id
+        )
+
+    if not allowed_file(uploaded_file.filename):
+        return render_template(
+            'encrypt.html',
+            message="Unsupported file type.",
             category="error",
             user_id=user_id
         )
@@ -1163,41 +1333,59 @@ def process_encryption():
             user_id=user_id
         )
 
-    # Extract transcriptions for the first 3 enrolled questions
-    try:
-        selected_transcriptions = [
-            answers[key].get('transcription', 'unknown') for key in list(answers.keys())[:3]
-        ]
-        logger.info(f"Transcriptions for encryption: {selected_transcriptions}")
-        if any(transcription == 'unknown' for transcription in selected_transcriptions):
-            raise ValueError("Missing transcriptions in some answers.")
-    except ValueError as e:
-        logger.error(f"ValueError: {e}")
+    # Determine file type and select appropriate encryption executable and output pattern
+    filename = secure_filename(uploaded_file.filename)
+    file_ext = filename.rsplit('.', 1)[1].lower()
+
+    encryption_info = ALLOWED_EXTENSIONS.get(file_ext)
+    if not encryption_info:
+        # This should not happen due to allowed_file check, but added for safety
+        logger.error(f"Unsupported file extension encountered: {file_ext}")
         return render_template(
             'encrypt.html',
-            message="Some transcriptions are missing. Please complete enrollment.",
+            message="Unsupported file type.",
             category="error",
             user_id=user_id
         )
 
-    # Path to the C++ executable
-    cpp_encrypt_executable = os.path.abspath('./C++/enc')  # Absolute path to the executable
-    cpp_dir = os.path.dirname(cpp_encrypt_executable)  # Directory of the executable
+    encryption_executable = encryption_info['executable']
+    output_pattern = encryption_info['output_pattern']
+
+    encryption_dir = os.path.dirname(encryption_executable)
 
     # Move the file to the executable's directory
-    filename = secure_filename(uploaded_file.filename)
-    input_filepath = os.path.join(cpp_dir, filename)  # Copy file to the executable's directory
-    uploaded_file.save(input_filepath)
+    input_filepath = os.path.join(encryption_dir, filename)
+    try:
+        uploaded_file.save(input_filepath)
+        logger.info(f"Uploaded file saved to {input_filepath}")
+    except Exception as e:
+        logger.error(f"Error saving uploaded file: {e}")
+        return render_template(
+            'encrypt.html',
+            message="Failed to save the uploaded file.",
+            category="error",
+            user_id=user_id
+        )
 
     # Prepare arguments for the encryption command
-    args = [cpp_encrypt_executable, filename] + selected_transcriptions
+    args = [encryption_executable, filename]
 
     try:
         logger.info(f"Executing encryption with args: {args}")
-        subprocess.run(args, check=True, cwd=cpp_dir)  # Set working directory to the executable's directory
-        encrypted_filename = f"encrypted_{filename}"
-        encrypted_filepath = os.path.join(cpp_dir, encrypted_filename)
+        # Execute the encryption process
+        result = subprocess.run(args, check=True, cwd=encryption_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        logger.info(f"Encryption subprocess stdout: {result.stdout}")
+        logger.info(f"Encryption subprocess stderr: {result.stderr}")
 
+        # Determine the expected encrypted file path
+        if '{filename}' in output_pattern:
+            encrypted_filename = output_pattern.format(filename=filename)
+        else:
+            encrypted_filename = output_pattern  # For audio files as per current behavior
+
+        encrypted_filepath = os.path.join(encryption_dir, encrypted_filename)
+
+        # Check if the encrypted file exists
         if not os.path.exists(encrypted_filepath):
             logger.error(f"Encrypted file not found: {encrypted_filepath}")
             return render_template(
@@ -1210,19 +1398,37 @@ def process_encryption():
         # Read the encrypted file
         with open(encrypted_filepath, 'rb') as f:
             encrypted_data = f.read()
+        logger.info(f"Encrypted file {encrypted_filename} read successfully.")
 
-        # Clean up
-        os.remove(input_filepath)
-        os.remove(encrypted_filepath)
+        # Clean up: Remove the original and encrypted files after reading
+        try:
+            os.remove(input_filepath)
+            logger.info(f"Removed input file: {input_filepath}")
+            os.remove(encrypted_filepath)
+            logger.info(f"Removed encrypted file: {encrypted_filepath}")
+        except Exception as cleanup_error:
+            logger.warning(f"Error during cleanup: {cleanup_error}")
+
+        # Determine the download filename based on file type
+        if file_ext in {'txt', 'jpg', 'jpeg', 'png'}:
+            download_filename = encrypted_filename
+        elif file_ext in {'mp3', 'wav'}:
+            # For audio, the encrypted file is a text file
+            download_filename = encrypted_filename
+        else:
+            # Fallback in case of unexpected file type
+            download_filename = encrypted_filename
 
         # Provide the encrypted file for download
         return send_file(
             io.BytesIO(encrypted_data),
             as_attachment=True,
-            download_name=encrypted_filename
+            download_name=download_filename
         )
     except subprocess.CalledProcessError as e:
         logger.error(f"Encryption subprocess error: {e}")
+        logger.error(f"Subprocess stdout: {e.stdout}")
+        logger.error(f"Subprocess stderr: {e.stderr}")
         return render_template(
             'encrypt.html',
             message="An error occurred during encryption.",
@@ -1237,6 +1443,7 @@ def process_encryption():
             category="error",
             user_id=user_id
         )
+
 
 # ###############################################################################################################################
 # ###############################################################################################################################

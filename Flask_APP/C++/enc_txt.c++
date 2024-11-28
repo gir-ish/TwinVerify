@@ -47,7 +47,6 @@ int getRandomNumberExcluding(int min, int max, int exclude) {
 int getRandomNumberInRange(int min, int max) {
     return min + rand() % (max - min + 1);
 }
-
 // Function to handle the encryption of a string with memoization
 string encryptAndMapToChar(const string& input) {
     stringstream encryptedMessage; // Use stringstream to build the result
@@ -154,19 +153,12 @@ void writeToFile(const string& filename, const string& data) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 5) {
-        cerr << "Usage: " << argv[0] << " <input_filename> <string1> <string2> <string3>" << endl;
+    if (argc != 2) {
+        cerr << "Usage: " << argv[0] << " <input_filename>" << endl;
         return 1;
     }
 
     string inputFilename = argv[1];
-    string str1 = argv[2]; // First string argument (e.g., "dog")
-    string str2 = argv[3]; // Second string argument (e.g., "cat")
-    string str3 = argv[4]; // Third string argument (e.g., "ball")
-
-    // Concatenate the three strings with spaces in between
-    string preEncrypted = str1 + " " + str2 + " " + str3 + " ";
-
     string outputFilename = "encrypted_" + inputFilename;
 
     // Read the file contents
@@ -176,7 +168,7 @@ int main(int argc, char* argv[]) {
     auto start = high_resolution_clock::now();
 
     // Step 1: Encrypt the contents of the file with memoization
-    string encryptedMessage = encryptAndMapToChar(preEncrypted + message); // Prepend the three strings + space
+    string encryptedMessage = encryptAndMapToChar(message);
 
     // Step 2: Apply randomness to the encrypted message
     string randomizedMessage = applyRandomness(encryptedMessage);

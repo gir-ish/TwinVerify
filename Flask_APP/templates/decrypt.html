@@ -1,4 +1,4 @@
-<!-- <!DOCTYPE html>
+<!-- <!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -91,7 +91,7 @@
     </div>
 </body>
 </html> -->
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -225,6 +225,182 @@
 <body>
     <video id="videoBackground" autoplay muted loop>
         <source src="static/3130284-uhd_3840_2160_30fps.mp4 " type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div class="scrollable-content">
+        <div class="container">
+            <h2>🔓 Decrypt Your Files</h2>
+            <p>User: {{ user_id }}</p>
+            <form action="/process_decryption" method="post" enctype="multipart/form-data">
+                <label for="file">Select Encrypted File (.txt):</label>
+                <input type="file" id="file" name="file" accept=".txt" required>
+
+                <label for="file_type">Select Output File Type:</label>
+                <select id="file_type" name="file_type" required>
+                    <option value="" disabled selected>Select the output file type</option>
+                    <option value="txt">Text (.txt)</option>
+                    <option value="jpg">Image (.jpg, .jpeg)</option>
+                    <option value="jpeg">Image (.jpg, .jpeg)</option>
+                    <option value="png">Image (.png)</option>
+                    <option value="mp3">Audio (.mp3)</option>
+                    <option value="wav">Audio (.wav)</option>
+                </select>
+
+                <div class="supported-types">
+                    <p>Supported output file types for decryption: .txt, .jpg, .jpeg, .png, .mp3, .wav</p>
+                </div>
+
+                <button type="submit">🔓 Decrypt File</button>
+            </form>
+            {% if message %}
+                <p class="message {{ category }}">{{ message }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/encrypt">Encrypt</a>
+        <a href="/logout">Logout</a>
+    </div>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Decrypt Files - Voice Authentication System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #000;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #videoBackground {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        h2 {
+            color: #f44336;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        input[type="file"], select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            background-color: #f44336;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #da190b;
+            transform: scale(1.05);
+        }
+
+        .nav-links {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            padding: 10px 0;
+            background-color: rgba(5, 5, 5, 0);
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+
+        .nav-links a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #f44336;
+            font-weight: bold;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            background-color: #f44336;
+            color: #fff;
+            transform: scale(1.05);
+        }
+
+        .message {
+            margin-top: 20px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .supported-types {
+            margin-top: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .scrollable-content {
+            max-height: 90vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <video id="videoBackground" autoplay muted loop>
+        <source src="static/3130284-uhd_3840_2160_30fps.mp4" type="video/mp4">
         Your browser does not support the video tag.
     </video>
 
