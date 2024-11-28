@@ -22,6 +22,13 @@ import logging
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, flash
 from flask import jsonify
 from difflib import SequenceMatcher
+from transformers import pipeline
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+
+
+# import spacy
+
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -32,10 +39,32 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
-
+print("mongo-Db..--------------")
+print('------------------------')
+print('------------------------')
 app.config["MONGO_URI"] = "mongodb://localhost:27017/voice_authentication_system"
 mongo = PyMongo(app)
 users_collection = mongo.db.users
+print('------------------------')
+print('------------------------')
+
+
+print("transformer...----------")
+print('------------------------')
+print('------------------------')
+model_name = "google/flan-t5-small"  # Use "flan-t5-base" or "flan-t5-large" for better results
+tokenizer = T5Tokenizer.from_pretrained(model_name)
+model = T5ForConditionalGeneration.from_pretrained(model_name)
+
+print('------------------------')
+print('------------------------')
+
+# print("spacy loaded..----------")
+# print('------------------------')
+# print('------------------------')
+# nlp = spacy.load("en_core_web_sm")
+# print('------------------------')
+# print('------------------------')
 
 print("Loading Whisper model...")
 print('------------------------')
@@ -378,6 +407,8 @@ num_unique = len(unique_questions)
 num_samples = 200 - num_unique
 
 questions = unique_questions + [f"Sample question {i}" for i in range(1, num_samples + 1)]
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 def convert_audio_to_wav(audio_data):
     """Convert uploaded audio data to WAV format using pydub."""
@@ -392,6 +423,8 @@ def convert_audio_to_wav(audio_data):
         print(f"Error converting audio: {e}")
         return None
 
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 def compute_embedding(audio_data):
     """Generate an embedding from the audio data using Speechbrain."""
@@ -430,6 +463,8 @@ def compute_embedding(audio_data):
     embedding = embedding.squeeze(0)
 
     return embedding
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 def transcribe_audio(audio_data):
     """Transcribe the audio data using Whisper."""
@@ -442,6 +477,8 @@ def transcribe_audio(audio_data):
     except Exception as e:
         print(f"Error transcribing audio: {e}")
         return ""
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 def compute_cosine_similarity(new_embedding, stored_embeddings):
     """Compute cosine similarity between new embedding and all stored embeddings."""
@@ -470,15 +507,8 @@ def compute_cosine_similarity(new_embedding, stored_embeddings):
     
     return similarities
 
-
-
-
-# def update_embedding_incrementally(old_embedding, new_embedding, alpha=0.5):
-#     """Update embedding by combining old and new embeddings."""
-#     updated_embedding = alpha * old_embedding + (1 - alpha) * new_embedding
-#     # Normalize the updated embedding
-#     updated_embedding = updated_embedding / torch.norm(updated_embedding)
-#     return updated_embedding
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 def update_embedding_incrementally(old_embedding, new_embedding, alpha=0.9):
     """Update embedding by combining old and new embeddings."""
@@ -489,10 +519,91 @@ def update_embedding_incrementally(old_embedding, new_embedding, alpha=0.9):
 
     return updated_embedding.tolist()  # Convert back to list for JSON serialization
 
+# ###############################################################################################################################
+# ###############################################################################################################################
+
+# def extract_answer_spacy(transcription, question_key, user_data):
+#     """
+#     Extract the most relevant single-word answer from the transcription using spaCy.
+#     """
+#     transcription = transcription.lower()
+#     doc = nlp(transcription)
+
+#     # Map question_key to actual question text
+#     question_text = user_data['answers'][question_key]['question_text'].lower()
+
+#     # Define possible answers based on question context
+#     possible_answers = []
+
+#     # Predefined keywords and patterns
+#     colors = {"red", "blue", "green", "yellow", "purple", "orange", "black", "white", "gray", "pink"}
+    
+#     if "favorite color" in question_text:
+#         # Extract adjectives or predefined color names
+#         for token in doc:
+#             if token.pos_ == "ADJ" or token.text in colors:
+#                 possible_answers.append(token.text)
+
+#     elif "pet's name" in question_text:
+#         # Extract proper nouns or named entities labeled as PERSON
+#         for ent in doc.ents:
+#             if ent.label_ == "PERSON":
+#                 possible_answers.append(ent.text)
+#         for token in doc:
+#             if token.pos_ in ["PROPN", "NOUN"]:
+#                 possible_answers.append(token.text)
+
+#     else:
+#         # General fallback: prioritize nouns, proper nouns, and adjectives
+#         for token in doc:
+#             if token.pos_ in ["NOUN", "PROPN", "ADJ"]:
+#                 possible_answers.append(token.text)
+
+#     # Return the first valid answer or fallback to the last significant word
+#     return possible_answers[0] if possible_answers else (doc[-1].text if doc else "")
+
+# ###############################################################################################################################
+# ###############################################################################################################################
+
+
+def extract_answer_with_t5(transcription, question):
+    """
+    Use FLAN-T5 to extract the most relevant single-word or short-phrase answer.
+    """
+    prompt = f"""
+    Extract the single most relevant word or concise short phrase that directly answers the question.
+
+    Question: {question}
+    Transcription: {transcription}
+    Answer:
+    """
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+
+    try:
+        outputs = model.generate(
+            inputs.input_ids,
+            max_length=10,  # Limit the output to a concise response
+            num_beams=3,    # Use beam search for better results
+            early_stopping=True
+        )
+        raw_answer = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+        # Post-process to return a single word or short phrase joined by underscores
+        processed_answer = "_".join(raw_answer.split())
+        return processed_answer
+    except Exception as e:
+        logger.error(f"Error with FLAN-T5: {e}")
+        return None
+
+
+# ###############################################################################################################################
+# ###############################################################################################################################
+
 
 @app.route('/login')
 def login():
     return render_template('login.html')
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 @app.route('/secure_dashboard')
 def secure_dashboard():
@@ -502,6 +613,8 @@ def secure_dashboard():
         return redirect(url_for('login'))
     logger.info(f"Rendering secure_dashboard for user_id: {user_id}")
     return render_template('secure_dashboard.html', user_id=user_id)
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 
 @app.route('/verify_answer', methods=['POST'])
@@ -632,16 +745,22 @@ def verify_answer():
     except Exception as e:
         logger.exception("An unexpected error occurred during verification.")
         return jsonify({'status': 'error', 'message': 'An unexpected error occurred.'}), 500
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 @app.route('/')
 def home():
     return render_template('index.html')
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 @app.route('/enroll', methods=['POST'])
 def enroll():
@@ -658,6 +777,8 @@ def enroll():
     users_collection.insert_one({"user_id": user_id, "answers": {}})
 
     return render_template('enroll.html', user_id=user_id)
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 @app.route('/get_questions', methods=['GET'])
 def get_questions():
@@ -707,6 +828,65 @@ def get_questions():
         questions_list = [answers[f'q{i}']['question_text'] for i in range(1, 4)]
 
     return jsonify({'questions': questions_list})
+# ###############################################################################################################################
+# ###############################################################################################################################
+
+# @app.route('/submit_answer', methods=['POST'])
+# def submit_answer():
+#     user_id = request.form.get('user_id', '').strip()
+#     question_text = request.form.get('question', '').strip()
+#     audio_file = request.files.get('audio')
+
+#     if not all([user_id, question_text, audio_file]):
+#         return jsonify({"status": "error", "message": "Missing parameters."}), 400
+
+#     try:
+#         # Read user data
+#         user = users_collection.find_one({"user_id": user_id})
+#         if not user:
+#             return jsonify({"status": "error", "message": "User not found."}), 404
+
+#         # Match the question text to the stored questions
+#         answers = user.get('answers', {})
+#         question_key = None
+#         for key, value in answers.items():
+#             if value.get('question_text', '').strip().lower() == question_text.strip().lower():
+#                 question_key = key
+#                 break
+
+#         if not question_key:
+#             return jsonify({'status': 'error', 'message': 'Question not found.'}), 404
+
+#         # Process audio data (convert, transcribe, and compute embedding)
+#         audio_data = audio_file.read()
+#         wav_data = convert_audio_to_wav(audio_data)
+#         if not wav_data:
+#             return jsonify({'status': 'error', 'message': 'Audio conversion failed.'}), 500
+        
+#         transcription = transcribe_audio(wav_data)
+#         if transcription.strip() == "":
+#             return jsonify({'status': 'error', 'message': 'Transcription failed or was empty.'}), 500
+
+#         embedding = compute_embedding(wav_data)
+#         if embedding is None:
+#             return jsonify({'status': 'error', 'message': 'Embedding computation failed.'}), 500
+
+#         # Update the user's answer data
+#         recording_id = str(uuid.uuid4())
+#         embedding_data = {"recording_id": recording_id, "embedding": embedding.tolist()}
+#         users_collection.update_one(
+#             {"user_id": user_id},
+#             {
+#                 "$push": {f"answers.{question_key}.embeddings": embedding_data},
+#                 "$set": {f"answers.{question_key}.transcription": transcription.strip().lower()},
+#             }
+#         )
+
+#         return jsonify({"status": "success", "transcription": transcription, "recording_id": recording_id}), 200
+
+#     except Exception as e:
+#         logger.exception("Unexpected error in submit_answer.")
+#         return jsonify({"status": "error", "message": "An unexpected error occurred."}), 500
 
 @app.route('/submit_answer', methods=['POST'])
 def submit_answer():
@@ -744,26 +924,44 @@ def submit_answer():
         if transcription.strip() == "":
             return jsonify({'status': 'error', 'message': 'Transcription failed or was empty.'}), 500
 
+        logger.info(f"Transcription: {transcription}")
+
         embedding = compute_embedding(wav_data)
         if embedding is None:
             return jsonify({'status': 'error', 'message': 'Embedding computation failed.'}), 500
 
+        # Use FLAN-T5 to extract the single-word or short-phrase answer
+        processed_answer = extract_answer_with_t5(transcription, question_text)
+        if not processed_answer:
+            return jsonify({'status': 'error', 'message': 'Answer extraction failed.'}), 500
+
+        logger.info(f"Processed answer: {processed_answer}")
+
         # Update the user's answer data
         recording_id = str(uuid.uuid4())
-        embedding_data = {"recording_id": recording_id, "embedding": embedding.tolist()}
+        embedding_data = {
+            "recording_id": recording_id,
+            "embedding": embedding.tolist(),
+            "processed_answer": processed_answer  # Store the processed answer
+        }
         users_collection.update_one(
             {"user_id": user_id},
             {
                 "$push": {f"answers.{question_key}.embeddings": embedding_data},
-                "$set": {f"answers.{question_key}.transcription": transcription.strip().lower()},
+                "$set": {f"answers.{question_key}.transcription": processed_answer},
             }
         )
 
-        return jsonify({"status": "success", "transcription": transcription, "recording_id": recording_id}), 200
+        return jsonify({"status": "success", "transcription": transcription, "processed_answer": processed_answer, "recording_id": recording_id}), 200
 
     except Exception as e:
         logger.exception("Unexpected error in submit_answer.")
         return jsonify({"status": "error", "message": "An unexpected error occurred."}), 500
+
+# ###############################################################################################################################
+# ###############################################################################################################################
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 @app.route('/delete_recording', methods=['POST'])
 def delete_recording():
@@ -819,6 +1017,8 @@ def delete_recording():
     else:
         logger.warning(f"Recording {recording_id} not found for user {user_id}, question {question_key}.")
         return jsonify({"status": "error", "message": "Recording not found."}), 404
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 @app.route('/finalize_enrollment', methods=['POST'])
 def finalize_enrollment():
@@ -839,6 +1039,8 @@ def finalize_enrollment():
     )
 
     return jsonify({"status": "success", "message": "Enrollment finalized."})
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 @app.route('/complete/<user_id>')
 def complete(user_id):
@@ -846,6 +1048,8 @@ def complete(user_id):
     if not user:
         return "User not found", 404
     return render_template('complete.html', user=user)
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 @app.route('/cancel_enrollment', methods=['POST'])
 def cancel_enrollment():
@@ -853,6 +1057,8 @@ def cancel_enrollment():
     users_collection.delete_one({"user_id": user_id})
     return jsonify({"status": "success", "message": "Enrollment canceled and data deleted."})
 
+# ###############################################################################################################################
+# ###############################################################################################################################
 
 @app.route('/authenticate', methods=['POST'])
 def authenticate():
@@ -887,6 +1093,10 @@ def authenticate():
 
     # Render the verify page with the selected question
     return render_template('verify.html', question=question_text)
+
+# ###############################################################################################################################
+# ###############################################################################################################################
+
 @app.route('/encrypt')
 def encrypt():
     # Check if the user is logged in
