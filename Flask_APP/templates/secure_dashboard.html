@@ -28,56 +28,116 @@
     <meta charset="UTF-8">
     <title>Secure Dashboard</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
             margin: 0;
-            background-color: #5998e4;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            overflow: hidden;
         }
-        .container {
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            width: 400px;
+
+        /* Background video styling */
+        .background-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .modern-container {
+            width: 450px; /* Increased width */
+            padding: 40px; /* More padding for spaciousness */
+            background: rgba(255, 255, 255, 0.85); /* Slightly less opaque for modern feel */
+            border-radius: 15px; /* Modern rounded corners */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); /* Larger shadow for depth */
             text-align: center;
+            z-index: 1;
+            position: relative;
+            animation: popIn 0.6s ease-out forwards;
         }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
         h1 {
-            font-size: 24px;
+            font-size: 26px; /* Larger title */
             color: #333;
+            margin-bottom: 20px;
+            animation: fadeIn 0.8s ease-in-out;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
         }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         p {
-            font-size: 16px;
+            font-size: 18px; /* Slightly larger for clarity */
             color: #555;
+            margin-bottom: 30px;
         }
+
         button {
             background-color: #28a745;
             color: white;
             border: none;
-            padding: 10px 15px;
-            font-size: 16px;
-            border-radius: 5px;
+            padding: 12px 20px; /* Larger button size */
+            font-size: 18px; /* Larger text */
+            border-radius: 8px; /* More modern rounded corners */
             cursor: pointer;
-            margin: 10px;
+            margin: 12px 0;
+            transition: background-color 0.3s ease, transform 0.2s;
         }
+
         button:hover {
             background-color: #218838;
+            transform: translateY(-3px); /* Subtle lift effect on hover */
         }
+
         .nav-links a {
             text-decoration: none;
             color: #007bff;
             font-size: 14px;
         }
+
         .nav-links a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Background video -->
+    <video class="background-video" autoplay muted loop>
+        <source src="static/3130284-uhd_3840_2160_30fps.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div class="modern-container">
         <h1>Welcome to Your Secure Dashboard, {{ user_id }}!</h1>
         <p>Select an option below to proceed:</p>
         <div>

@@ -44,35 +44,88 @@
     <meta charset="UTF-8">
     <title>Voice Authentication System</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
             margin: 0;
-            background-color: #5998e4;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            overflow: hidden;
         }
-        .container {
-            background: #ffffff;
+
+        /* Background video styling */
+        .background-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+
+        .glass-container {
+            background: rgba(25, 26, 60, 0.4); /* Transparent glass-like background */
             border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
             padding: 30px;
             width: 350px;
             text-align: center;
+            animation: fadeIn 0.8s ease-out forwards;
         }
+        @keyframes popIn {
+            0% {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .container {
+            text-align: center;
+            padding: 30px;
+            width: 100%;
+        }
+
         h1 {
             font-size: 24px;
+            color: #f8f3f3;
             margin-bottom: 20px;
-            color: #333;
+            animation: fadeIn 0.8s ease-in-out;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
         }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         form {
             margin-bottom: 20px;
         }
+
         label {
             font-size: 14px;
-            color: #666;
+            color: #f4f0f0;
         }
+
         input[type="text"] {
             width: 100%;
             padding: 10px;
@@ -82,6 +135,7 @@
             font-size: 14px;
             box-sizing: border-box;
         }
+
         button {
             background-color: #007bff;
             color: white;
@@ -91,21 +145,28 @@
             border-radius: 5px;
             cursor: pointer;
             width: 100%;
+            transition: background-color 0.3s ease;
         }
+
         button:hover {
             background-color: #0056b3;
         }
+
         .nav-links {
             margin-top: 10px;
         }
+
         .nav-links a {
             text-decoration: none;
             color: #007bff;
             font-size: 14px;
         }
+
         .nav-links a:hover {
             text-decoration: underline;
+            color: cyan;
         }
+
         .message {
             color: #d9534f;
             font-size: 14px;
@@ -114,18 +175,26 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to Voice Authentication</h1>
-        <form action="/enroll" method="post">
-            <label for="user_id">Enter Your Username</label><br>
-            <input type="text" id="user_id" name="user_id" required>
-            <button type="submit">Start Enrollment</button>
-        </form>
-        {% if message %}
-            <p class="message">{{ message }}</p>
-        {% endif %}
-        <div class="nav-links">
-            <a href="/login">Login</a>
+    <!-- Background video -->
+    <video class="background-video" autoplay muted loop>
+        <source src="static/tanay.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div class="glass-container">
+        <div class="container">
+            <h1>Welcome to Voice Authentication</h1>
+            <form action="/enroll" method="post">
+                <label for="user_id">Enter Your Username</label><br>
+                <input type="text" id="user_id" name="user_id" required>
+                <button type="submit">Start Enrollment</button>
+            </form>
+            {% if message %}
+                <p class="message">{{ message }}</p>
+            {% endif %}
+            <div class="nav-links">
+                <a href="/login">Login</a>
+            </div>
         </div>
     </div>
 </body>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -77,6 +77,167 @@
         <form action="/process_encryption" method="post" enctype="multipart/form-data">
             <label for="file">Select File to Encrypt:</label>
             <input type="file" id="file" name="file" required>
+            <button type="submit">🔐 Encrypt File</button>
+        </form>
+        {% if message %}
+            <p class="message {{ category }}">{{ message }}</p>
+        {% endif %}
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/decrypt">Decrypt</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Encrypt Files - Voice Authentication System</title>
+    <style>
+        /* General styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            color: #000; /* Text in black */
+        }
+
+        /* Video background */
+        #videoBackground {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        /* Centered container styling */
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            margin-top: 100px;
+            text-align: center;
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        /* Title styling */
+        h2 {
+            color: #000; /* Text in black */
+            margin-bottom: 20px;
+        }
+
+        /* Form and button styling */
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+            color: #000; /* Text in black */
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px; /* Added spacing below input */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        /* Navigation links */
+        .nav-links {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px; /* Added spacing between links */
+        }
+
+        .nav-links a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #000; /* Text in black */
+            font-weight: bold;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            background-color: #4CAF50;
+            color: #fff;
+            transform: scale(1.05);
+        }
+
+        /* Feedback messages */
+        .message {
+            margin-top: 20px;
+            margin-bottom: 15px; /* Added spacing below message */
+            font-weight: bold;
+            color: #000; /* Text in black */
+        }
+
+        .supported-types {
+            margin-top: 10px;
+            margin-bottom: 15px; /* Added spacing below supported types */
+            font-size: 14px;
+            color: #555;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Video Background -->
+    <video id="videoBackground" autoplay muted loop>
+        <source src="static/3130284-uhd_3840_2160_30fps.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <!-- Centered container -->
+    <div class="container">
+        <h2>🔐 Encrypt Your Files</h2>
+        <p>User: {{ user_id }}</p>
+        <form action="/process_encryption" method="post" enctype="multipart/form-data">
+            <label for="file">Select File to Encrypt:</label>
+            <input type="file" id="file" name="file" required>
+            <div class="supported-types">
+                <p>Supported file types: .txt, .jpg, .jpeg, .png, .mp3, .wav</p>
+            </div>
             <button type="submit">🔐 Encrypt File</button>
         </form>
         {% if message %}

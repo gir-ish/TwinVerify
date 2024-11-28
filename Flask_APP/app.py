@@ -686,7 +686,7 @@ def verify_answer():
         similarities = compute_cosine_similarity(embedding_list, stored_embeddings)
 
         # Define similarity threshold
-        THRESHOLD = 0.65  # Adjust based on your requirements
+        THRESHOLD = 0.25  # Adjust based on your requirements
 
         # Find the maximum similarity
         max_similarity = max(similarities) if similarities else 0

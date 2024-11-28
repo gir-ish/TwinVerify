@@ -4,116 +4,223 @@
     <meta charset="UTF-8">
     <title>Verify Your Voice</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
             margin: 0;
-            background-color: #5998e4;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            background: #333;
+            overflow: hidden;
         }
+
+        /* Video background */
+        video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+            animation: fadeInVideo 3s ease-in-out;
+        }
+
+        @keyframes fadeInVideo {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
         .container {
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            width: 80%;
-            max-width: 800px;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 15px;
+            padding: 50px;
+            width: 90%;
+            max-width: 900px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            animation: popIn 0.6s ease-out forwards;
         }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
         h1 {
-            font-size: 24px;
+            font-size: 32px;
             color: #333;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            animation: fadeInText 1s ease-in-out;
         }
+
+        @keyframes fadeInText {
+            0% {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #controls {
+            text-align: center;
+            margin-top: 30px;
+        }
+
         #controls button {
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 10px 15px;
-            font-size: 14px;
-            border-radius: 5px;
+            padding: 20px 35px;
+            font-size: 20px;
+            border-radius: 8px;
             cursor: pointer;
-            margin-right: 10px;
-            margin-bottom: 10px;
+            margin: 15px;
+            transition: transform 0.2s ease, background-color 0.3s ease;
+            width: 250px;
         }
+
         #controls button:hover {
             background-color: #0056b3;
         }
+
+        #controls button:active {
+            transform: scale(0.95);
+        }
+
         .question-block {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
             border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 15px;
-            background: #f9f9f9;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            animation: fadeInBlock 0.6s ease-out;
         }
+
+        @keyframes fadeInBlock {
+            0% {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .question-block h3 {
-            margin-top: 0;
             color: #444;
+            font-size: 24px;
+            margin-bottom: 20px;
         }
+
         .verification-result {
             font-size: 18px;
             margin-top: 20px;
             text-align: center;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 15px;
+            border-radius: 8px;
+            display: inline-block;
+            animation: fadeInResult 1s ease-in-out;
         }
+
+        @keyframes fadeInResult {
+            0% {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .success {
             background-color: #d4edda;
             color: #155724;
         }
+
         .failure {
             background-color: #f8d7da;
             color: #721c24;
         }
-        #verifyBtn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 15px;
+
+        p, .error {
             font-size: 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 20px;
+            color: #555;
+            margin-top: 10px;
+            text-align: center;
         }
-        #verifyBtn:hover {
-            background-color: #218838;
-        }
+        
     </style>
 </head>
 <body>
-    <div class="question-block">
-        <h3>Question:</h3>
-        <p id="question">{{ question }}</p>
-        <button onclick="startRecording()" id="startBtn">Start Recording</button>
-        <button onclick="stopRecording()" id="stopBtn" disabled>Stop Recording</button>
-        <p id="transcript" class="transcription"></p>
-        <p id="error" class="error"></p>
+    <!-- Video Background -->
+    <video autoplay muted loop>
+        <source src="static/3130284-uhd_3840_2160_30fps.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div class="container">
+        <h1>Verify Your Voice</h1>
+        <div class="question-block">
+            <h3>Question:</h3>
+            <p id="question">{{ question }}</p>
+            <button onclick="startRecording()" id="startBtn">Start Recording🎤</button>
+            <button onclick="stopRecording()" id="stopBtn" disabled>Stop Recording🔇</button>
+            <p id="transcript" class="transcription"></p>
+            <p id="error" class="error"></p>
+        </div>
+
+        <div id="controls">
+            <button onclick="submitRecording()" id="verifyBtn">Submit Answer</button>
+        </div>
+
+        <div class="verification-result success" id="verificationResult" style="display: none;"></div>
     </div>
 
-    
     <script>
         let mediaRecorder;
         let audioChunks = [];
-    
+
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
                 .then(stream => {
                     mediaRecorder = new MediaRecorder(stream);
                     mediaRecorder.start();
                     console.log("Recording started...");
-    
+
                     mediaRecorder.ondataavailable = event => {
                         audioChunks.push(event.data);
                     };
-    
+
                     mediaRecorder.onstop = () => {
                         const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                         audioChunks = [];
                         processRecording(audioBlob);
                     };
-    
+
                     document.getElementById('startBtn').disabled = true;
                     document.getElementById('stopBtn').disabled = false;
                 })
@@ -122,21 +229,21 @@
                     alert("Could not access microphone. Please check your permissions.");
                 });
         }
-    
+
         function stopRecording() {
             mediaRecorder.stop();
             console.log("Recording stopped.");
             document.getElementById('stopBtn').disabled = true;
         }
-    
+
         function processRecording(audioBlob) {
             const formData = new FormData();
             formData.append('audio', audioBlob);
-    
+
             // Show processing message
             document.getElementById('transcript').innerText = "Processing transcription...";
             document.getElementById('error').innerText = "";
-    
+
             fetch('/verify_answer', {
                 method: 'POST',
                 body: formData
@@ -163,115 +270,10 @@
                 alert("Error verifying answer. Please try again.");
             });
         }
-    
+
         function submitRecording() {
-            // In this implementation, submission is handled immediately after recording stops.
-            // This function can be used to confirm submission or perform additional actions if needed.
             alert("Your answer has been submitted for verification.");
         }
     </script>
-    </body>
-</html>
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Verify Your Identity</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            background-color: #f0f4f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .container {
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            width: 80%;
-            max-width: 800px;
-        }
-        h1 {
-            font-size: 24px;
-            color: #333;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        #controls button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            font-size: 14px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-        #controls button:hover {
-            background-color: #0056b3;
-        }
-        .question-block {
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 15px;
-            background: #f9f9f9;
-        }
-        .question-block h3 {
-            margin-top: 0;
-            color: #444;
-        }
-        .verification-result {
-            font-size: 18px;
-            margin-top: 20px;
-            text-align: center;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .failure {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        #verifyBtn {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            font-size: 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-        #verifyBtn:hover {
-            background-color: #218838;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Verify Your Identity</h1>
-        <p><strong>Username:</strong> <span id="username">{{ user_id }}</span></p>
-        <div id="questionContainer" class="question-block" style="display:none;">
-            <h3 id="questionText"></h3>
-            <button onclick="startRecording()" id="startBtn">Start Recording</button>
-            <button onclick="stopRecording()" id="stopBtn" disabled>Stop Recording</button>
-            <button onclick="submitRecording()" id="submitBtn" disabled>Submit</button>
-            <button onclick="reRecord()" id="reRecordBtn" disabled>Re-record</button>
-            <p id="transcript" class="transcription"></p>
-            <p id="error" class="error"></p>
-        </div>
-        <button id="loadQuestionBtn">Load Question</button>
-        <button id="verifyBtn" disabled onclick="verify()">Verify</button>
-        <div id="result" class="verification-result" style="display:none;"></div>
-    </div>
 </body>
-</html> -->
+</html>
