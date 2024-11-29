@@ -98,7 +98,7 @@ string encryptAndMapToChar(const string& input) {
 
 // Function to apply randomness to the encrypted message
 string applyRandomness(const string& encryptedMessage) {
-    // Generate random number between 4-9, excluding 5
+    // Generate random number between 1-9, excluding 5
     int randomNum = getRandomNumberExcluding(1, 9, 5);
     
     // Start the result string with the random number

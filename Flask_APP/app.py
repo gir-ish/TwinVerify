@@ -28,7 +28,7 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration
 
 # import spacy
 
-
+import shutil
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,7 +44,14 @@ app.secret_key = os.urandom(24)
 # Allowed extensions and their corresponding encryption executables and output patterns
 # Allowed extensions and their corresponding encryption executables and output patterns
 
-
+SUPPORTED_OUTPUT_TYPES = {
+    'txt': 'txt',
+    'jpg': 'jpg',
+    'jpeg': 'jpeg',
+    'png': 'png',
+    'mp3': 'mp3',
+    'wav': 'wav'
+}
 ALLOWED_EXTENSIONS = {
     'txt': {
         'executable': os.path.abspath('./C++/enc_txt'),
@@ -71,6 +78,44 @@ ALLOWED_EXTENSIONS = {
         'output_pattern': 'encrypted_audio_data.txt'  # As per current behavior
     }
 }
+
+# Path to the decryption executables
+DECRYPTION_EXECUTABLES = {
+    'txt': os.path.abspath('./C++/dec_txt'),
+    'jpg': os.path.abspath('./C++/dec_img'),
+    'jpeg': os.path.abspath('./C++/dec_img'),
+    'png': os.path.abspath('./C++/dec_img'),
+    'mp3': os.path.abspath('./C++/dec_audio'),
+    'wav': os.path.abspath('./C++/dec_audio')
+}
+
+DECRYPTION_EXTENSIONS = {
+    'txt': {
+        'executable': os.path.abspath('./C++/dec_txt'),
+        'output_pattern': 'decrypted_{filename}'
+    },
+    'jpg': {
+        'executable': os.path.abspath('./C++/dec_img'),
+        'output_pattern': 'decrypted_{filename}.jpg'
+    },
+    'jpeg': {
+        'executable': os.path.abspath('./C++/dec_img'),
+        'output_pattern': 'decrypted_{filename}.jpeg'
+    },
+    'png': {
+        'executable': os.path.abspath('./C++/dec_img'),
+        'output_pattern': 'decrypted_{filename}.png'
+    },
+    'mp3': {
+        'executable': os.path.abspath('./C++/dec_audio'),
+        'output_pattern': 'decrypted_audio_data.mp3'
+    },
+    'wav': {
+        'executable': os.path.abspath('./C++/dec_audio'),
+        'output_pattern': 'decrypted_audio_data.wav'
+    }
+}
+
 
 print("mongo-Db..--------------")
 print('------------------------')
@@ -442,7 +487,13 @@ num_samples = 200 - num_unique
 questions = unique_questions + [f"Sample question {i}" for i in range(1, num_samples + 1)]
 # ###############################################################################################################################
 # ###############################################################################################################################
+ALLOWED_ENCRYPTED_EXTENSIONS = {'txt'}
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_ENCRYPTED_EXTENSIONS
+
+def allowed_decryption_file_type(file_type):
+    return file_type.lower() in DECRYPTION_EXTENSIONS
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -460,6 +511,17 @@ def convert_audio_to_wav(audio_data):
     except Exception as e:
         print(f"Error converting audio: {e}")
         return None
+
+
+def cleanup_temp_dir(temp_dir):
+    """Delete the temporary directory and its contents."""
+    try:
+        shutil.rmtree(temp_dir)
+        logger.info(f"Temporary directory {temp_dir} deleted successfully.")
+    except Exception as e:
+        logger.error(f"Error deleting temporary directory {temp_dir}: {e}")
+
+
 
 # ###############################################################################################################################
 # ###############################################################################################################################
@@ -724,7 +786,7 @@ def verify_answer():
         similarities = compute_cosine_similarity(embedding_list, stored_embeddings)
 
         # Define similarity threshold
-        THRESHOLD = 0.25  # Adjust based on your requirements
+        THRESHOLD = 0.60  # Adjust based on your requirements
 
         # Find the maximum similarity
         max_similarity = max(similarities) if similarities else 0
@@ -1455,66 +1517,189 @@ def decrypt():
     return render_template('decrypt.html')
 # ###############################################################################################################################
 # ###############################################################################################################################
+
+# @app.route('/process_decryption', methods=['POST'])
+# def process_decryption():
+#     if 'user_id' not in session:
+#         logger.info("No user_id in session. Redirecting to login.")
+#         return redirect(url_for('login'))
+    
+#     user_id = session['user_id']
+#     uploaded_file = request.files.get('file', None)
+#     output_file_type = request.form.get('file_type', '').lower()
+    
+#     # Validate uploaded file
+#     if not uploaded_file or uploaded_file.filename == '':
+#         logger.error("No file uploaded.")
+#         return render_template('decrypt.html', message="File is required.", category="error", user_id=user_id)
+    
+#     filename = secure_filename(uploaded_file.filename)
+#     if not allowed_file(filename):
+#         logger.error(f"Unsupported encrypted file type: {filename}")
+#         return render_template('decrypt.html', message="Unsupported encrypted file type. Please upload a .txt file.", category="error", user_id=user_id)
+    
+#     try:
+#         temp_dir = tempfile.mkdtemp()
+#         input_filepath = os.path.join(temp_dir, filename)
+#         uploaded_file.save(input_filepath)
+#         logger.info(f"Uploaded encrypted file saved at: {input_filepath}")
+#     except Exception as e:
+#         logger.error(f"Error saving uploaded file: {e}")
+#         return render_template('decrypt.html', message="Failed to save the uploaded file.", category="error", user_id=user_id)
+    
+#     # Determine the decryption executable
+#     decryption_executable = DECRYPTION_EXECUTABLES.get(output_file_type)
+#     if not decryption_executable:
+#         logger.error(f"No decryption executable configured for output type: {output_file_type}")
+#         cleanup_temp_dir(temp_dir)
+#         return render_template('decrypt.html', message="Invalid output file type selected.", category="error", user_id=user_id)
+    
+#     # Determine the expected output file name based on the decryption type
+#     if output_file_type in {'mp3', 'wav'}:
+#         # For audio decryption, the output file is a fixed name
+#         output_filename = "reconstructed_audio.wav"
+#     else:
+#         # For text or images, derive the output file name dynamically
+#         output_filename = os.path.basename(filename).rsplit('.', 1)[0] + "_decrypted.txt"
+#     decrypted_filepath = os.path.join(temp_dir, output_filename)
+    
+#     # Execute the decryption subprocess
+#     try:
+#         logger.info(f"Executing decryption with args: [{decryption_executable}, {input_filepath}]")
+#         subprocess.run(
+#             [decryption_executable, input_filepath],
+#             check=True,
+#             cwd=temp_dir,
+#             stdout=subprocess.PIPE,
+#             stderr=subprocess.PIPE,
+#             text=True
+#         )
+#         logger.info("Decryption subprocess completed.")
+#     except subprocess.CalledProcessError as e:
+#         logger.error(f"Decryption subprocess error: {e}")
+#         logger.error(f"Subprocess stdout: {e.stdout}")
+#         logger.error(f"Subprocess stderr: {e.stderr}")
+#         cleanup_temp_dir(temp_dir)
+#         return render_template('decrypt.html', message="An error occurred during decryption.", category="error", user_id=user_id)
+#     except Exception as e:
+#         logger.error(f"Unexpected error during decryption: {e}")
+#         cleanup_temp_dir(temp_dir)
+#         return render_template('decrypt.html', message="An unexpected error occurred during decryption.", category="error", user_id=user_id)
+    
+#     # Verify that the decrypted file exists
+#     if not os.path.exists(decrypted_filepath):
+#         logger.error(f"Decrypted file not found: {decrypted_filepath}")
+#         cleanup_temp_dir(temp_dir)
+#         return render_template('decrypt.html', message="Decryption failed. Decrypted file not found.", category="error", user_id=user_id)
+    
+#     try:
+#         with open(decrypted_filepath, 'rb') as f:
+#             decrypted_data = f.read()
+#         logger.info(f"Decrypted file {decrypted_filepath} read successfully.")
+#         cleanup_temp_dir(temp_dir)
+#         return send_file(
+#             io.BytesIO(decrypted_data),
+#             as_attachment=True,
+#             download_name=f"decrypted_{filename.rsplit('.', 1)[0]}.{output_file_type}"
+#         )
+#     except Exception as e:
+#         logger.error(f"Error serving decrypted file: {e}")
+#         cleanup_temp_dir(temp_dir)
+#         return render_template('decrypt.html', message="Failed to serve the decrypted file.", category="error", user_id=user_id)
 @app.route('/process_decryption', methods=['POST'])
 def process_decryption():
     if 'user_id' not in session:
+        logger.info("No user_id in session. Redirecting to login.")
         return redirect(url_for('login'))
     
     user_id = session['user_id']
     uploaded_file = request.files.get('file', None)
+    output_file_type = request.form.get('file_type', '').lower()
     
-    if not uploaded_file:
-        return render_template('decrypt.html', message="File is required.", category="error")
+    # Validate uploaded file
+    if not uploaded_file or uploaded_file.filename == '':
+        logger.error("No file uploaded.")
+        return render_template('decrypt.html', message="File is required.", category="error", user_id=user_id)
     
-    # Save the uploaded file temporarily
     filename = secure_filename(uploaded_file.filename)
-    temp_dir = tempfile.gettempdir()
-    input_filepath = os.path.join(temp_dir, filename)
-    uploaded_file.save(input_filepath)
-    logger.info(f"Uploaded file saved at: {input_filepath}")
-    
-    if not filename.startswith('encrypted_'):
-        logger.error("Invalid file prefix for decryption.")
-        return render_template('decrypt.html', message="Invalid file format. Expected encrypted file.", category="error")
-    
-    cpp_decrypt_executable = '/home/girish/GIT/Audio_vault/Flask_APP/C++/dec'
-    args = [cpp_decrypt_executable, input_filepath]
-    logger.info(f"Running decryption: {args}")
+    if not allowed_file(filename):
+        logger.error(f"Unsupported encrypted file type: {filename}")
+        return render_template('decrypt.html', message="Unsupported encrypted file type. Please upload a valid file.", category="error", user_id=user_id)
     
     try:
-        result = subprocess.run(args, check=True, capture_output=True, text=True)
-        logger.info(f"Decryption Output: {result.stdout}")
-        
-        decrypted_path = None
-        for line in result.stdout.splitlines():
-            if "Decrypted file saved to:" in line:
-                decrypted_path = line.split(": ")[-1].strip()
-        
-        if not decrypted_path or not os.path.exists(decrypted_path):
-            logger.error(f"Decrypted file not found: {decrypted_path}")
-            return render_template('decrypt.html', message="Decryption failed. Decrypted file not found.", category="error")
-        
-        logger.info(f"Decrypted file available at: {decrypted_path}")
-        
-        with open(decrypted_path, 'rb') as f:
+        temp_dir = tempfile.mkdtemp()
+        input_filepath = os.path.join(temp_dir, filename)
+        uploaded_file.save(input_filepath)
+        logger.info(f"Uploaded encrypted file saved at: {input_filepath}")
+    except Exception as e:
+        logger.error(f"Error saving uploaded file: {e}")
+        return render_template('decrypt.html', message="Failed to save the uploaded file.", category="error", user_id=user_id)
+    
+    # Determine the decryption executable
+    decryption_executable = DECRYPTION_EXECUTABLES.get(output_file_type)
+    if not decryption_executable:
+        logger.error(f"No decryption executable configured for output type: {output_file_type}")
+        cleanup_temp_dir(temp_dir)
+        return render_template('decrypt.html', message="Invalid output file type selected.", category="error", user_id=user_id)
+    
+    # Set the expected output file name based on the decryption type
+    if output_file_type in {'jpg', 'jpeg', 'png'}:
+        # For images, the output file is fixed as 'decrypted_image.png'
+        output_filename = "decrypted_image.png"
+    elif output_file_type in {'mp3', 'wav'}:
+        # For audio, the output file is fixed as 'reconstructed_audio.wav'
+        output_filename = "reconstructed_audio.wav"
+    elif output_file_type in {'txt'}:
+        # For text, derive the output file name dynamically
+        output_filename = os.path.basename(filename).rsplit('.', 1)[0] + "_decrypted.txt"
+    else:
+        # Default behavior for other file types
+        output_filename = f"decrypted_{filename}"
+    decrypted_filepath = os.path.join(temp_dir, output_filename)
+    
+    # Execute the decryption subprocess
+    try:
+        logger.info(f"Executing decryption with args: [{decryption_executable}, {input_filepath}]")
+        subprocess.run(
+            [decryption_executable, input_filepath],
+            check=True,
+            cwd=temp_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        logger.info("Decryption subprocess completed.")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Decryption subprocess error: {e}")
+        logger.error(f"Subprocess stdout: {e.stdout}")
+        logger.error(f"Subprocess stderr: {e.stderr}")
+        cleanup_temp_dir(temp_dir)
+        return render_template('decrypt.html', message="An error occurred during decryption.", category="error", user_id=user_id)
+    except Exception as e:
+        logger.error(f"Unexpected error during decryption: {e}")
+        cleanup_temp_dir(temp_dir)
+        return render_template('decrypt.html', message="An unexpected error occurred during decryption.", category="error", user_id=user_id)
+    
+    # Verify that the decrypted file exists
+    if not os.path.exists(decrypted_filepath):
+        logger.error(f"Decrypted file not found: {decrypted_filepath}")
+        cleanup_temp_dir(temp_dir)
+        return render_template('decrypt.html', message="Decryption failed. Decrypted file not found.", category="error", user_id=user_id)
+    
+    try:
+        with open(decrypted_filepath, 'rb') as f:
             decrypted_data = f.read()
-        
-        os.remove(input_filepath)
-        os.remove(decrypted_path)
-        logger.info("Temporary files removed.")
-        
+        logger.info(f"Decrypted file {decrypted_filepath} read successfully.")
+        cleanup_temp_dir(temp_dir)
         return send_file(
             io.BytesIO(decrypted_data),
             as_attachment=True,
-            download_name=os.path.basename(decrypted_path),
-            mimetype='text/plain'
+            download_name=f"decrypted_{filename.rsplit('.', 1)[0]}.{output_file_type}"
         )
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Decryption error: {e.stderr}")
-        return render_template('decrypt.html', message="Decryption failed. Error occurred.", category="error")
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        return render_template('decrypt.html', message="An unexpected error occurred.", category="error")
+        logger.error(f"Error serving decrypted file: {e}")
+        cleanup_temp_dir(temp_dir)
+        return render_template('decrypt.html', message="Failed to serve the decrypted file.", category="error", user_id=user_id)
 
 # ###############################################################################################################################
 # ###############################################################################################################################
