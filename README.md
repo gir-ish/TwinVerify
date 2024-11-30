@@ -2,7 +2,7 @@
 # 🎤🔒 Audio Vault ENC/DEC - Secure Speaker Verification System
 
 ## 🌟 Overview
-**Audio Vault ENC/DEC** is a robust authentication framework that combines **speaker verification**, **voice embeddings**, and **AI-driven answer similarity** to ensure secure and dynamic authentication. This system integrates advanced technologies such as **Whisper** for speech-to-text, **LLMs (e.g., LLaMA)** for semantic understanding, and **MongoDB** for secure data storage. It provides seamless workflows for enrollment, login, and data encryption/decryption, offering a unique blend of voice and text-based security.
+**Audio Vault ENC/DEC** is a robust authentication framework that combines **speaker verification**, **voice embeddings**, and **AI-driven answer similarity** to ensure secure and dynamic authentication. This system integrates advanced technologies such as **Whisper** for speech-to-text, **LLMs (e.g., T5, LLaMA)** for semantic understanding, and **MongoDB** for secure data storage. It provides seamless workflows for enrollment, login, and data encryption/decryption, offering a unique blend of voice and text-based security.
 
 ---
 ![Example Screenshot](audio-vault-enc-dec-application-llm.drawio.png "Project Working")
