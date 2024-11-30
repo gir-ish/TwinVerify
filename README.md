@@ -2,50 +2,76 @@
 # 🎤🔒 Audio Vault ENC/DEC - Secure Speaker Verification System
 
 ## 🌟 Overview
-**Audio Vault ENC/DEC** is a secure, two-step authentication system that combines **speaker verification** and **audio-based encryption/decryption** to ensure robust user authentication and data security. This project uniquely integrates voice authentication with secure data handling for both **user enrollment** and **data access**.
+**Audio Vault ENC/DEC** is a robust authentication framework that combines **speaker verification**, **voice embeddings**, and **AI-driven answer similarity** to ensure secure and dynamic authentication. This system integrates advanced technologies such as **Whisper** for speech-to-text, **LLMs (e.g., LLaMA)** for semantic understanding, and **MongoDB** for secure data storage. It provides seamless workflows for enrollment, login, and data encryption/decryption, offering a unique blend of voice and text-based security.
+
 ---
-![Example Screenshot](audio-vault-enc-dec-application.drawio-llama-.png "Project Working")
+![Example Screenshot](audio-vault-enc-dec-application-llm.drawio.png "Project Working")
 ---
 
 ## 🚀 Features
-- **🔑 Two-Step Verification**:
-  - Enroll by answering questions via voice.
-  - Authenticate by answering a randomly selected question; both voice and textual answers are verified.
-  
-- **🔐 Audio-Based Encryption and Decryption**:
-  - Files are encrypted with an embedded answer.
-  - During decryption, the embedded answer is validated for authentication.
 
-- **🎲 Dynamic Authentication**:
-  - Random questions ensure enhanced security.
-  - All answers are securely stored in encrypted format.
+- **🔑 Two-Step Authentication**:
+  - Combines **voice-based verification** with **semantic text matching**.
+  - Uses both **voice embeddings** and **AI text understanding** for authentication.
+
+- **🔐 Audio-Based Encryption and Decryption**:
+  - Encrypts files with user-specific answers embedded as keys.
+  - Validates embedded answers during decryption for secure access.
+
+- **🎲 Randomized Questions**:
+  - Dynamically selects random questions for authentication.
+  - Ensures increased security through unpredictability.
+
+- **🤖 LLM-Powered Answer Validation**:
+  - Processes and validates **contextual answers** using a language model.
+  - Supports flexible answers by focusing on semantic similarity.
+
+- **📊 MongoDB Database**:
+  - Securely stores voice embeddings and textual answers for rapid verification.
 
 ---
 
+
 ## 🔄 Workflow
 
-### 📝 1. User Enrollment
-- Register by speaking answers to predefined questions.
-- Both:
-  - **Voice embeddings** (generated from audio).
-  - **Text answers**.
-- are securely stored in the database.
+### 1. **User Enrollment**:
 
-### 🔓 2. User Login
-- A random question is presented for authentication.
-- The system verifies:
-  - New **voice embeddings**.
-  - The **text answer**.
+1. User answers **three randomly selected questions** via voice.
+2. System processes inputs using:
+   - **Whisper** for speech-to-text conversion.
+   - **X-Vectors** for voice embeddings.
+3. Stores both:
+   - Voice embeddings for speaker verification.
+   - Text responses for semantic validation.
+4. Data is securely saved in a MongoDB database.
 
-### 🔒 3. Data Encryption
-- Encrypt files with an answer embedded in the encrypted file.
-- The embedded answer ensures only the user can decrypt the file.
+---
 
-### 🗂️ 4. Data Decryption
-- During decryption:
-  - Extract the embedded answer.
-  - Validate it against the database.
-  - If verified, decrypt the file.
+### 2. **Login (Authentication)**:
+
+1. User answers a **randomly selected question** from their enrollment data.
+2. System verifies the input through:
+   - **Voice Embedding Similarity**: Compares the user's current voice to their stored embeddings using cosine similarity.
+   - **Textual Answer Validation**: Checks the semantic similarity between the user's response and the stored answer using LLMs.
+3. Access is granted only if both checks pass.
+
+---
+
+### 3. **Encryption**:
+
+1. User selects a file to encrypt.
+2. User provides a specific answer, which is embedded as the encryption key.
+3. The encrypted file ensures that only the user with the correct answer can decrypt it.
+
+---
+
+### 4. **Decryption**:
+
+1. User uploads the encrypted file for decryption.
+2. System extracts the embedded answer and validates it against the database.
+3. If the validation is successful:
+   - File is decrypted.
+   - User gains access to the original content.
 
 ---
 
