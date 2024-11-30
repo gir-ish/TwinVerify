@@ -191,7 +191,7 @@ Audio_vault_ENC_DEC/
 - Multi-language audio processing support.
 - Enhanced UI/UX for seamless user experience.
 - Optimization of voice embedding algorithms for higher accuracy.
-- Use of LLMs to get the one work answer user will have freedom speak complete sentence.
+- Dynamic Thrusholds
 ---
 <!-- 
 ## 🤝 Contributing
