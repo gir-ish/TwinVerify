@@ -666,33 +666,60 @@ def update_embedding_incrementally(old_embedding, new_embedding, alpha=0.9):
 # ###############################################################################################################################
 
 
-def extract_answer_with_t5(transcription, question):
-    """
-    Use FLAN-T5 to extract the most relevant single-word or short-phrase answer.
-    """
-    prompt = f"""
-    Extract the single most relevant word or concise short phrase that directly answers the question.
+# def extract_answer_with_t5(transcription, question):
+#     """
+#     Use FLAN-T5 to extract the most relevant single-word or short-phrase answer.
+#     """
+#     prompt = f"""
+#     Extract the single most relevant word or concise short phrase that directly answers the question.
 
-    Question: {question}
-    Transcription: {transcription}
-    Answer:
-    """
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+#     Question: {question}
+#     Transcription: {transcription}
+#     Answer:
+#     """
+#     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
 
-    try:
-        outputs = model.generate(
-            inputs.input_ids,
-            max_length=10,  # Limit the output to a concise response
-            num_beams=3,    # Use beam search for better results
-            early_stopping=True
-        )
-        raw_answer = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
-        # Post-process to return a single word or short phrase joined by underscores
-        processed_answer = "_".join(raw_answer.split())
-        return processed_answer
-    except Exception as e:
-        logger.error(f"Error with FLAN-T5: {e}")
-        return None
+#     try:
+#         outputs = model.generate(
+#             inputs.input_ids,
+#             max_length=10,  # Limit the output to a concise response
+#             num_beams=3,    # Use beam search for better results
+#             early_stopping=True
+#         )
+#         raw_answer = tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+#         # Post-process to return a single word or short phrase joined by underscores
+#         processed_answer = "_".join(raw_answer.split())
+#         return processed_answer
+#     except Exception as e:
+#         logger.error(f"Error with FLAN-T5: {e}")
+#         return None
+
+
+
+
+def verify_answer_with_model(transcribed, expected):
+    """
+    Use the transformer model to decide if the transcribed answer matches the expected answer.
+    Returns True if they mean the same thing, otherwise False.
+    """
+    prompt = (
+        "Compare the following two sentences and decide if they convey the same meaning.\n"
+        f"Sentence 1: '{transcribed}'\n"
+        f"Sentence 2: '{expected}'\n"
+        "Answer with 'True' or 'False'."
+    )
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=128)
+    outputs = model.generate(
+        inputs.input_ids,
+        max_length=10,
+        num_beams=3,
+        early_stopping=True
+    )
+    # Decode and standardize the output
+    raw_output = tokenizer.decode(outputs[0], skip_special_tokens=True).strip().lower()
+    # You might encounter outputs like "true", "yes", etc.
+    return "true" in raw_output
+
 
 
 # ###############################################################################################################################
@@ -792,22 +819,19 @@ def verify_answer():
         max_similarity = max(similarities) if similarities else 0
         logger.info(f"Max Similarity: {max_similarity}")
 
-        # Check transcription match
-        transcription_pass = normalized_transcription == expected_transcription
-        logger.info(f"Transcription Pass: {transcription_pass}")
+        # Use transformer model for verification of the transcription
+        transcription_pass = verify_answer_with_model(normalized_transcription, expected_transcription)
+        logger.info(f"Transcription verification (model) result: {transcription_pass}")
 
         # Check if any similarity exceeds the threshold
         similarity_pass = max_similarity >= THRESHOLD
         logger.info(f"Similarity Pass: {similarity_pass}")
 
-        if similarity_pass:
+        if transcription_pass and similarity_pass:
             # Successful authentication
             logger.info("Authentication successful.")
 
             # --- Embedding Update Logic Starts Here ---
-
-            # Retrieve the list of stored embeddings
-            # Assuming you want to update each stored embedding incrementally
             updated_embeddings = []
             for old_emb in stored_embeddings:
                 updated_emb = update_embedding_incrementally(old_emb, embedding_list)
@@ -828,7 +852,6 @@ def verify_answer():
                 logger.info("Embeddings successfully updated in the database.")
             else:
                 logger.warning("Failed to update embeddings in the database.")
-
             # --- Embedding Update Logic Ends Here ---
 
             return jsonify({'status': 'success', 'transcription': transcription, 'result': 'open'}), 200
@@ -838,7 +861,7 @@ def verify_answer():
             if not similarity_pass:
                 failure_reasons.append("Voice does not match.")
             if not transcription_pass:
-                failure_reasons.append("Transcription does not match expected answer.")
+                failure_reasons.append("Answer verification failed.")
             logger.info("Authentication failed.")
             return jsonify({'status': 'error', 'message': ' '.join(failure_reasons)}), 401
 
