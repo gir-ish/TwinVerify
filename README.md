@@ -8,6 +8,33 @@
 ![Example Screenshot](audio-vault-enc-dec-application.drawio.png "Project Working")
 ---
 
+## 📸 Demo
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="i1.jpg" alt="Enrollment Page" width="300"/><br>
+      <strong>Enrollment</strong>
+    </td>
+    <td align="center">
+      <img src="i2.jpg" alt="Login Page" width="300"/><br>
+      <strong>Login</strong>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="i3.jpg" alt="Encryption Page" width="300"/><br>
+      <strong>Encrypt File</strong>
+    </td>
+    <td align="center">
+      <img src="i4.jpg" alt="Decryption Page" width="300"/><br>
+      <strong>Decrypt File</strong>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 🚀 Features
 
 - **🔑 Two-Step Authentication**:
