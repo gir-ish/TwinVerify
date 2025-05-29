@@ -14,11 +14,11 @@
   <tr>
     <td align="center">
       <img src="i1.jpg" alt="Enrollment Page" width="300"/><br>
-      <strong>Enrollment</strong>
+      <strong>Login</strong>
     </td>
     <td align="center">
       <img src="i2.jpg" alt="Login Page" width="300"/><br>
-      <strong>Login</strong>
+      <strong>Dashboard</strong>
     </td>
   </tr>
   <tr>
